@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "grant-hunter": {
+      "command": "uvx",
+      "args": ["--from", "grant-hunter-mcp", "grant-hunter-serve"],
+      "env": {
+        "GRANT_HUNTER_DATA_DIR": "${HOME}/.grant-hunter"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "grant-hunter",
+  "version": "1.0.0",
+  "description": "AMR+AI Grant auto-collection system for Institut Pasteur Korea",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

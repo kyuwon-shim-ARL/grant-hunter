@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grant-hunter-mcp"
+version = "1.0.0"
+description = "AMR+AI Grant auto-collection system for Institut Pasteur Korea"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28",
+    "beautifulsoup4>=4.11",
+    "lxml>=4.9",
+    "mcp>=1.0",
+]
+
+[project.scripts]
+grant-hunter-serve = "grant_hunter.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/grant_hunter"]

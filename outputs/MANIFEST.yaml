@@ -1,5 +1,5 @@
 version: 3
-updated: "2026-03-16T11:45:00Z"
+updated: "2026-03-16T18:30:00Z"
 scan_paths:
   - outputs/
 foundations: {}
@@ -33,3 +33,24 @@ experiments:
     created: "2026-03-16"
     depends_on: [e002, e003]
     hypothesis: "규칙 기반 적격성 판정 + 키워드 TF-IDF로 LLM 없이 80% 정확도를 달성할 수 있다"
+  e005:
+    title: "PyPI 패키지 구조 전환 (grant-hunter-mcp)"
+    status: experimental
+    issue: 5
+    created: "2026-03-16"
+    depends_on: [e002, e003, e004]
+    hypothesis: "src/ 레이아웃 + 환경변수 기반 config로 전환하면 MCP 서버에서 독립적으로 import 가능하다"
+  e006:
+    title: "Python MCP Server 구현 (stdio transport)"
+    status: experimental
+    issue: 6
+    created: "2026-03-16"
+    depends_on: [e005]
+    hypothesis: "9개 MCP tool로 grant_hunter의 모든 기능을 Claude Code 대화에서 자연어로 사용할 수 있다"
+  e007:
+    title: "Claude Code Plugin 래퍼 (npm + skills)"
+    status: experimental
+    issue: 7
+    created: "2026-03-16"
+    depends_on: [e006]
+    hypothesis: "npm thin wrapper + PyPI MCP server 2-패키지 구조로 Claude Code 플러그인 배포가 가능하다"
