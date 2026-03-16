@@ -1,0 +1,35 @@
+version: 3
+updated: "2026-03-16T11:45:00Z"
+scan_paths:
+  - outputs/
+foundations: {}
+milestone:
+  name: "v1.0 - Grant Auto-Collection System"
+  description: "AMR+AI 연구 Grant 자동 수집 시스템 구축 (비평 반영 4-Phase)"
+experiments:
+  e001:
+    title: "Phase 0 - NTIS/IRIS 공식 알림 등록 + 캘린더 마감 리마인더"
+    status: active
+    issue: 1
+    created: "2026-03-16"
+    hypothesis: "코드 없이 공식 알림 서비스만으로 한국 정부 과제 모니터링의 70%를 해결할 수 있다"
+  e002:
+    title: "Phase 1 - 핵심 API 수집기 (NIH + EU + grants.gov)"
+    status: active
+    issue: 2
+    created: "2026-03-16"
+    hypothesis: "국제 과제 3개 API + 키워드 매칭으로 Tier 1-2 국제 Grant의 85%를 자동 포착할 수 있다"
+  e003:
+    title: "Phase 2 - AMR 특화 크롤러 확장 (CARB-X, RIGHT, Pasteur)"
+    status: active
+    issue: 4
+    created: "2026-03-16"
+    depends_on: [e002]
+    hypothesis: "5개 핵심 사이트 크롤러로 AMR 특화 Grant 95%를 커버하면서 유지보수 부담을 관리 가능 수준으로 유지할 수 있다"
+  e004:
+    title: "Phase 3 - 적격성 엔진 + 관련성 스코어링"
+    status: active
+    issue: 3
+    created: "2026-03-16"
+    depends_on: [e002, e003]
+    hypothesis: "규칙 기반 적격성 판정 + 키워드 TF-IDF로 LLM 없이 80% 정확도를 달성할 수 있다"
