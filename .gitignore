@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+build/
+.cache/
+.parcel-cache/
+coverage/
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Claude
+.claude/
+CLAUDE.md
+
+# Environment
+.env
+.env.local
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ML/AI
+models/
+checkpoints/
+*.h5
+*.pkl
+*.pth
+wandb/
+mlruns/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
