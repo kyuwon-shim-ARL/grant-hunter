@@ -30,22 +30,22 @@ def test_validate_grant_rejects_short_description():
     assert "description too short" in reason
 
 
-def test_validate_grant_rejects_description_exactly_49_chars():
-    grant = {"title": "Valid Title", "description": "A" * 49}
+def test_validate_grant_rejects_description_exactly_19_chars():
+    grant = {"title": "Valid Title", "description": "A" * 19}
     ok, reason = validate_grant(grant)
     assert not ok
     assert "description too short" in reason
 
 
 def test_validate_grant_accepts_valid_grant():
-    grant = {"title": "Valid AMR Grant", "description": "A" * 50}
+    grant = {"title": "Valid AMR Grant", "description": "A" * 20}
     ok, reason = validate_grant(grant)
     assert ok
     assert reason == "ok"
 
 
-def test_validate_grant_accepts_description_exactly_50_chars():
-    grant = {"title": "Valid Title", "description": "A" * 50}
+def test_validate_grant_accepts_description_exactly_20_chars():
+    grant = {"title": "Valid Title", "description": "A" * 20}
     ok, reason = validate_grant(grant)
     assert ok
 

@@ -126,10 +126,27 @@ class NIHCollector(BaseCollector):
             agency_code = item.get("agencyCode", "") or "NIH"
 
             synopsis = detail.get("synopsis", {}) if detail else {}
-            description = synopsis.get("synopsisDesc", "") or ""
+            forecast = detail.get("forecast", {}) if detail else {}
+
+            # Try synopsis first (posted), then forecast (forecasted)
+            description = (
+                synopsis.get("synopsisDesc", "")
+                or forecast.get("forecastDesc", "")
+                or ""
+            )
+            # Strip HTML tags for cleaner text
+            if "<" in description:
+                import re
+                description = re.sub(r'<[^>]+>', ' ', description)
+                description = re.sub(r'\s+', ' ', description).strip()
 
             award_floor = synopsis.get("awardFloor") if synopsis else None
             award_ceiling = synopsis.get("awardCeiling") if synopsis else None
+            # Also check forecast for award info
+            if not award_floor and forecast:
+                award_floor = forecast.get("awardFloor")
+            if not award_ceiling and forecast:
+                award_ceiling = forecast.get("awardCeiling")
             amount_min = float(award_floor) if award_floor else None
             amount_max = float(award_ceiling) if award_ceiling else None
 

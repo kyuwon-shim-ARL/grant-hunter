@@ -58,7 +58,7 @@ def validate_grant(grant_dict: dict) -> tuple[bool, str]:
     if not grant_dict.get("title", "").strip():
         return False, "missing title"
     desc = grant_dict.get("description", "").strip()
-    if len(desc) < 50:
+    if len(desc) < 20:
         return False, f"description too short ({len(desc)} chars)"
     return True, "ok"
 

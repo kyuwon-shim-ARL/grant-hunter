@@ -187,3 +187,43 @@ experiments:
     milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
     hypothesis: "단일 기본 가중치 + TF 길이 정규화로 불일치 0%, TF 변동계수 50% 감소"
     result: "scoring.py _WEIGHTS를 profiles.py와 통일 {amr:0.40,ai:0.30,drug:0.20,amount:0.10}. TF에 log1p 길이 정규화. Python/JS 가중치 일치."
+  e023:
+    title: "라이브 파이프라인 실행 + v2.0 데이터 검증"
+    status: experimental
+    issue: 23
+    created: "2026-03-17"
+    depends_on: [e017, e018, e019, e020]
+    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
+    hypothesis: "v2.0 collector로 파이프라인을 실행하면 deadline 있는 레코드 비율 50% 이상, 유효 description 비율 80% 이상 달성"
+  e024:
+    title: "분류기 버그 수정 (expired=urgent, dedup 무효)"
+    status: experimental
+    issue: 24
+    created: "2026-03-17"
+    depends_on: [e016]
+    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
+    hypothesis: "expired guard + title-based dedup으로 중복 10% 이상 제거, 만료 공고 0건 urgent 달성"
+  e025:
+    title: "키워드 확장 + 필터 게이트 강화"
+    status: experimental
+    issue: 25
+    created: "2026-03-17"
+    depends_on: [e014, e022]
+    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
+    hypothesis: "키워드 138→200+ 확장 + AMR 서브티어로 false positive 50% 감소"
+  e026:
+    title: "적격성 엔진 US_ONLY 패턴 확장"
+    status: experimental
+    issue: 26
+    created: "2026-03-17"
+    depends_on: [e004]
+    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
+    hypothesis: "US_ONLY 패턴 20개+ 확장으로 탐지율 80% 이상 달성"
+  e027:
+    title: "프로덕션 안정화 (스냅샷 로테이션, 실패 알림, 원자적 쓰기)"
+    status: experimental
+    issue: 27
+    created: "2026-03-17"
+    depends_on: [e021]
+    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
+    hypothesis: "로테이션(7일) + 실패 이메일 + atomic write로 30일 무인 운영 가능"
