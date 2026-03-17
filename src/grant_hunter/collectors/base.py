@@ -43,7 +43,7 @@ class BaseCollector(ABC):
             with os.fdopen(fd, 'w', encoding='utf-8') as fh:
                 json.dump([g.to_dict() for g in grants], fh, cls=GrantEncoder, ensure_ascii=False, indent=2)
             os.replace(tmp_path, str(target))
-        except:
+        except Exception:
             os.unlink(tmp_path)
             raise
         logger.info("[%s] Saved %d grants to %s", self.name, len(grants), target)

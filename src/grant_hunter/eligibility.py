@@ -58,7 +58,7 @@ _US_ONLY = [
     "us institutions only", "u.s. institutions only",
     "domestic applicants only", "domestic institutions only",
     "us domestic", "u.s. domestic",
-    "must be a u.s.", "must be a us ",
+    "must be a u.s.", "must be a us",
     "citizenship required", "us citizenship",
     # New: Standard RFP restriction language
     "applicants must be us-based",

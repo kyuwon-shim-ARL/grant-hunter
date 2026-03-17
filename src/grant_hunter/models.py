@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field, asdict
 from datetime import date, datetime
 from typing import Optional, List, Dict, Any
@@ -48,7 +49,6 @@ class Grant:
 
     def cross_fingerprint(self) -> str:
         """Normalized title key for cross-source deduplication."""
-        import re
         title_norm = re.sub(r'[^a-z0-9 ]', '', self.title.lower()).strip()
         # Use first 80 chars to avoid minor suffix differences
         return title_norm[:80]

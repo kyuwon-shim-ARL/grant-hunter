@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import date, datetime
 from typing import List, Optional
@@ -136,7 +137,6 @@ class NIHCollector(BaseCollector):
             )
             # Strip HTML tags for cleaner text
             if "<" in description:
-                import re
                 description = re.sub(r'<[^>]+>', ' ', description)
                 description = re.sub(r'\s+', ' ', description).strip()
 
