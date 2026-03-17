@@ -227,3 +227,72 @@ def test_nih_foreign_eligible_r01_in_title(engine):
     )
     result = engine.check(grant)
     assert any("NIH_FOREIGN_ELIGIBLE" in r for r in result.rules_matched)
+
+
+# ── US_ONLY expanded phrases ──────────────────────────────────────────────────
+
+def test_us_only_real_phrases(engine):
+    phrases = [
+        "applicants must be us-based organizations",
+        "only organizations in the united states",
+        "restricted to american institutions",
+        "must hold us permanent residency",
+        "sbir eligible entities",
+        "501(c)(3) us nonprofit only",
+    ]
+    for phrase in phrases:
+        grant = make_grant(
+            id="US-REAL-001",
+            title="Domestic Grant",
+            source="grants_gov",
+            description=phrase,
+        )
+        result = engine.check(grant)
+        assert result.status == "ineligible", f"Expected ineligible for phrase: {phrase!r}"
+        assert any("US_ONLY" in r for r in result.rules_matched), (
+            f"Expected US_ONLY rule for phrase: {phrase!r}"
+        )
+
+
+# ── EU_HORIZON vs EU_SOURCE_LIKELY_ELIGIBLE ───────────────────────────────────
+
+def test_eu_horizon_explicit(engine):
+    """Grant with Horizon Europe text → eligible with EU_HORIZON_ASSOCIATE."""
+    grant = make_grant(
+        id="EU-HOR-001",
+        title="Horizon Europe Research",
+        source="grants_gov",
+        description="This project is funded under Horizon Europe.",
+    )
+    result = engine.check(grant)
+    assert result.status == "eligible"
+    assert "EU_HORIZON_ASSOCIATE" in result.rules_matched
+
+
+def test_eu_source_no_horizon(engine):
+    """Grant from source=eu with NO horizon keywords → EU_SOURCE_LIKELY_ELIGIBLE with lower confidence."""
+    grant = make_grant(
+        id="EU-SRC-001",
+        title="European Research Grant",
+        source="eu",
+        description="A research grant open to international institutions.",
+    )
+    result = engine.check(grant)
+    assert result.status == "eligible"
+    assert "EU_SOURCE_LIKELY_ELIGIBLE" in result.rules_matched
+    assert "EU_HORIZON_ASSOCIATE" not in result.rules_matched
+    assert result.confidence < 0.7  # lower confidence for source-only signal
+
+
+def test_eu_source_with_horizon(engine):
+    """Grant from source=eu WITH Horizon Europe keyword → EU_HORIZON_ASSOCIATE (not the weaker one)."""
+    grant = make_grant(
+        id="EU-SRC-HOR-001",
+        title="Horizon Europe International Grant",
+        source="eu",
+        description="Funded under Horizon Europe, open to associate countries.",
+    )
+    result = engine.check(grant)
+    assert result.status == "eligible"
+    assert "EU_HORIZON_ASSOCIATE" in result.rules_matched
+    assert "EU_SOURCE_LIKELY_ELIGIBLE" not in result.rules_matched

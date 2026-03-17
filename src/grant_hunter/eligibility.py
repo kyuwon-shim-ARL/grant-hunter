@@ -54,11 +54,37 @@ _UNIVERSITY_ONLY = [
 
 # Rule 3 – US domestic only (NIH R01/R21 are foreign-eligible → exempt)
 _US_ONLY = [
+    # Existing
     "us institutions only", "u.s. institutions only",
     "domestic applicants only", "domestic institutions only",
     "us domestic", "u.s. domestic",
     "must be a u.s.", "must be a us ",
     "citizenship required", "us citizenship",
+    # New: Standard RFP restriction language
+    "applicants must be us-based",
+    "must be us-based organizations",
+    "only organizations in the united states",
+    "restricted to american institutions",
+    "must hold us permanent residency",
+    "us permanent resident",
+    "us citizen or permanent resident",
+    "sbir eligible",
+    "sttr eligible",
+    "501(c)(3) us nonprofit",
+    "united states-based",
+    "located in the united states",
+    "based in the united states",
+    "u.s.-based organization",
+    "us-based organization",
+    "limited to us",
+    "limited to u.s.",
+    "open only to us",
+    "open only to u.s.",
+    "us entities only",
+    "u.s. entities only",
+    "american institutions only",
+    "us organization",
+    "u.s. organization",
 ]
 
 # NIH programmes that explicitly allow foreign institutions
@@ -167,8 +193,12 @@ class EligibilityEngine:
 
         # Rule 5: EU Horizon (Korea is associate member since 2025-07)
         hits = _contains_any(text, _EU_HORIZON)
-        if hits or source == "eu":
+        if hits:
             eligible_rules.append("EU_HORIZON_ASSOCIATE")
+        elif source == "eu":
+            # EU source but no explicit Horizon language — mark as likely eligible
+            # but with lower confidence (Korea is Pillar II associate)
+            eligible_rules.append("EU_SOURCE_LIKELY_ELIGIBLE")
 
         # NIH foreign-eligible exemption counts as positive
         if is_nih_foreign_eligible:
@@ -189,7 +219,9 @@ class EligibilityEngine:
             )
 
         if eligible_rules:
-            confidence = min(0.9, 0.6 + 0.1 * len(eligible_rules))
+            # Lower confidence for EU source-only signals
+            base_conf = 0.55 if eligible_rules == ["EU_SOURCE_LIKELY_ELIGIBLE"] else 0.6
+            confidence = min(0.9, base_conf + 0.1 * len(eligible_rules))
             reason = "; ".join(eligible_rules)
             return EligibilityResult(
                 status="eligible",
