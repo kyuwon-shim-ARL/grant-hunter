@@ -29,13 +29,6 @@ HEADERS = {
     )
 }
 
-# Keywords to identify relevant challenges
-RELEVANCE_KEYWORDS = [
-    "antimicrobial", "antibiotic", "amr", "drug resistance",
-    "infectious disease", "global health", "pathogen",
-    "artificial intelligence", "machine learning", "diagnostic",
-]
-
 
 class GatesGCCollector(BaseCollector):
     name = "gates_gc"

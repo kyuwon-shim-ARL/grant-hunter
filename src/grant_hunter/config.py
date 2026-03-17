@@ -37,11 +37,7 @@ MIN_AI_HITS = 1
 DEADLINE_WARN_DAYS = 7
 
 # API settings
-NIH_API_URL = "https://api.reporter.nih.gov/v2/projects/search"
-NIH_PAGE_SIZE = 500
-NIH_MAX_PAGES = 4
-
-GRANTS_GOV_API_URL = "https://apply07.grants.gov/grantsws/rest/opportunities/search"
+GRANTS_GOV_API_URL = "https://api.grants.gov/v1/api/search2"
 GRANTS_GOV_PAGE_SIZE = 25
 GRANTS_GOV_MAX_PAGES = 4
 

@@ -88,17 +88,15 @@ def check_staleness(snapshot_dir: Path, max_age_hours: int = 48) -> list:
 
 
 def _run_collector(collector: BaseCollector) -> Tuple[List[Grant], dict]:
-    """Run a single collector; return (grants, stats_dict)."""
+    """Run a single collector with retry; return (grants, stats_dict)."""
     stats: dict = {"success": False, "collected": 0, "filtered": 0, "error": None}
-    try:
-        grants = collector.collect()
+    grants = _collect_with_retry(collector.collect, collector.name)
+    if grants:
         stats["success"] = True
         stats["collected"] = len(grants)
-        return grants, stats
-    except Exception as exc:
-        logger.error("[%s] Collector failed: %s", collector.name, exc, exc_info=True)
-        stats["error"] = str(exc)
-        return [], stats
+    else:
+        stats["error"] = f"{collector.name} returned no results after retries"
+    return grants, stats
 
 
 def _send_email_report(subject: str, body: str, html_path: Path) -> bool:

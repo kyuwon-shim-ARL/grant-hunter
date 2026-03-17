@@ -24,8 +24,9 @@ SEARCH_KEYWORDS = [
     "AMR machine learning",
 ]
 
-# Agencies of interest
-TARGET_AGENCIES = {"HHS", "NIH", "BARDA", "NSF", "DOD", "NIAID"}
+# Agencies of interest (exclude NIH — handled by nih.py via Grants.gov HHS-NIH11 filter)
+TARGET_AGENCIES = {"HHS", "BARDA", "NSF", "DOD"}
+EXCLUDED_AGENCIES = {"HHS-NIH", "HHS-NIH11", "NIH", "NIAID"}
 
 
 class GrantsGovCollector(BaseCollector):
@@ -98,8 +99,7 @@ class GrantsGovCollector(BaseCollector):
                 "keyword": keyword,
                 "rows": GRANTS_GOV_PAGE_SIZE,
                 "startRecordNum": (page - 1) * GRANTS_GOV_PAGE_SIZE,
-                "oppStatuses": "forecasted|posted",
-                "sortBy": "openDate|desc",
+                "oppStatuses": "posted|forecasted",
             }
             headers = {
                 "Content-Type": "application/json",
@@ -158,8 +158,13 @@ class GrantsGovCollector(BaseCollector):
             if not opp_id:
                 return None
 
+            # Skip NIH grants — handled by nih.py collector
+            agency_code = item.get("agencyCode") or ""
+            if any(agency_code.startswith(exc) for exc in EXCLUDED_AGENCIES):
+                return None
+
             title = item.get("title") or ""
-            agency = item.get("agencyName") or item.get("agencyCode") or "US Government"
+            agency = item.get("agencyName") or agency_code or "US Government"
             description = item.get("synopsis") or item.get("description") or ""
 
             close_date = self._parse_date(item.get("closeDate") or item.get("deadlineDate"))
