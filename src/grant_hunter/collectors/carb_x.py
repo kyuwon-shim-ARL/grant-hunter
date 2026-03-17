@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 CARB_X_URLS = [
     "https://carb-x.org/apply/",
-    "https://carb-x.org/portfolio/",
+    "https://carb-x.org/apply/apply-here/",
 ]
 
 HEADERS = {

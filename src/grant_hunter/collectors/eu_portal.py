@@ -1,180 +1,179 @@
-"""EU CORDIS API collector for Horizon Europe funding opportunities.
+"""EU Funding & Tenders Portal collector for open/forthcoming calls.
 
-Uses the public CORDIS search API (no auth needed).
-Endpoint: https://cordis.europa.eu/api/search/results
+Uses the bulk grantsTenders.json reference data file (no auth needed).
+Endpoint: https://ec.europa.eu/info/funding-tenders/opportunities/data/referenceData/grantsTenders.json
 """
 
 from __future__ import annotations
 
 import logging
-import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 import requests
 
 from grant_hunter.collectors.base import BaseCollector
-from grant_hunter.config import REQUEST_TIMEOUT
 from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
 
-CORDIS_API_URL = "https://cordis.europa.eu/api/search/results"
+GRANTS_TENDERS_URL = (
+    "https://ec.europa.eu/info/funding-tenders/opportunities/data/referenceData/grantsTenders.json"
+)
 
-EU_SEARCH_TERMS = [
-    "antimicrobial resistance",
-    "antibiotic resistance AI",
-    "AMR drug discovery",
+# Keywords for AMR / AI relevance filtering (case-insensitive)
+AMR_AI_KEYWORDS = [
+    "antimicrobial",
+    "antibiotic",
+    "AMR",
+    "drug resistance",
+    "drug discovery",
+    "artificial intelligence",
+    "machine learning",
+    "infectious disease",
+    "pathogen",
+    "bacteria",
+    "superbug",
+    "sepsis",
+    "One Health",
 ]
 
-MONTH_MAP = {
-    "january": 1, "february": 2, "march": 3, "april": 4,
-    "may": 5, "june": 6, "july": 7, "august": 8,
-    "september": 9, "october": 10, "november": 11, "december": 12,
-}
+OPEN_STATUSES = {"open", "forthcoming"}
 
 
 class EUPortalCollector(BaseCollector):
     name = "eu"
 
     def collect(self) -> List[Grant]:
+        try:
+            topics = self._fetch_topics()
+        except Exception as exc:
+            logger.error("[eu] Failed to fetch grantsTenders.json: %s", exc)
+            return []
+
         grants: List[Grant] = []
-        seen_ids: set = set()
+        for topic in topics:
+            grant = self._parse(topic)
+            if grant is not None:
+                grants.append(grant)
 
-        for term in EU_SEARCH_TERMS:
-            try:
-                fetched = self._search(term, seen_ids)
-                grants.extend(fetched)
-                logger.info("[eu] Term '%s' -> %d new grants", term, len(fetched))
-            except Exception as exc:
-                logger.error("[eu] Error searching '%s': %s", term, exc)
-
-        logger.info("[eu] Total collected: %d unique grants", len(grants))
+        logger.info("[eu] Total collected: %d relevant open/forthcoming grants", len(grants))
         return grants
 
-    def _search(self, term: str, seen_ids: set) -> List[Grant]:
-        results: List[Grant] = []
+    def _fetch_topics(self) -> List[dict]:
+        resp = requests.get(GRANTS_TENDERS_URL, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        topics = data["fundingData"]["GrantTenderObj"]
 
-        for page in range(1, 4):  # max 3 pages
-            params = {
-                "query": term,
-                "type": "/project",
-                "page": page,
-                "pageSize": 50,
-                "format": "json",
-            }
-            headers = {
-                "Accept": "application/json",
-                "User-Agent": "grant_hunter/1.0",
-            }
+        # Filter by status
+        filtered = []
+        for topic in topics:
+            status_abbr = ""
+            status = topic.get("status")
+            if isinstance(status, dict):
+                status_abbr = status.get("abbreviation", "").lower()
+            elif isinstance(status, str):
+                status_abbr = status.lower()
 
-            try:
-                resp = requests.get(
-                    CORDIS_API_URL,
-                    params=params,
-                    headers=headers,
-                    timeout=REQUEST_TIMEOUT,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            except Exception as exc:
-                logger.error("[eu] Request failed page %d: %s", page, exc)
-                break
+            if status_abbr not in OPEN_STATUSES:
+                continue
 
-            payload = data.get("payload", {})
-            hits = payload.get("results", [])
-            if not hits:
-                break
+            # Keyword match on title + callTitle
+            title = topic.get("title", "") or ""
+            call_title = topic.get("callTitle", "") or ""
+            combined = f"{title} {call_title}".lower()
 
-            for item in hits:
-                grant = self._parse(item)
-                if grant and grant.id not in seen_ids:
-                    seen_ids.add(grant.id)
-                    results.append(grant)
+            if any(kw.lower() in combined for kw in AMR_AI_KEYWORDS):
+                filtered.append(topic)
 
-            total = payload.get("total", 0)
-            if page * 50 >= total:
-                break
+        logger.info(
+            "[eu] %d topics in bulk file, %d match open/forthcoming + keywords",
+            len(topics),
+            len(filtered),
+        )
+        return filtered
 
-        return results
-
-    def _parse(self, item: dict) -> Optional[Grant]:
+    def _parse(self, topic: dict) -> Optional[Grant]:
         try:
-            ref = str(item.get("reference", item.get("id", "")))
-            if not ref:
+            # Support new bulk JSON schema (identifier) and legacy test schema (reference)
+            identifier = str(topic.get("identifier", topic.get("reference", ""))).strip()
+            if not identifier:
                 return None
 
-            acronym = item.get("acronym", "")
-            title_text = item.get("title", "")
-            title = f"{acronym}: {title_text}" if acronym else title_text
-            description = item.get("objective", title_text) or ""
+            title = topic.get("title", "") or ""
+            call_title = topic.get("callTitle", "") or ""
+            acronym = topic.get("acronym", "") or ""
+            objective = topic.get("objective", "") or ""
 
-            # Programme info
-            programmes = item.get("programme", [])
+            # Programme info (legacy field)
+            programmes = topic.get("programme") or []
             programme_name = "Horizon Europe"
             if programmes:
                 programme_name = programmes[0].get("title", programme_name)
 
-            # Dates
-            end_date = self._parse_cordis_date(item.get("endDate", ""))
-            start_date = self._parse_cordis_date(item.get("startDate", ""))
+            # Build display title
+            if call_title and title:
+                full_title = f"{call_title} — {title}"
+            elif acronym and title:
+                full_title = f"{acronym}: {title}"
+            else:
+                full_title = title or call_title
 
-            # Budget
-            amount_max = None
-            cost = item.get("totalCost")
+            description = objective or call_title or title
+
+            # Deadline: bulk format uses deadlineDatesLong (ms epoch)
+            deadline: Optional[date] = None
+            deadline_dates = topic.get("deadlineDatesLong") or []
+            if deadline_dates:
+                try:
+                    ts_ms = int(deadline_dates[0])
+                    deadline = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc).date()
+                except (TypeError, ValueError, OSError):
+                    pass
+            elif topic.get("endDate"):
+                for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
+                    try:
+                        deadline = datetime.strptime(topic["endDate"][:19], fmt).date()
+                        break
+                    except ValueError:
+                        continue
+
+            # Budget: legacy CORDIS totalCost field
+            amount_max: Optional[float] = None
+            cost = topic.get("totalCost")
             if cost:
                 try:
                     amount_max = float(str(cost).replace(",", ""))
                 except ValueError:
                     pass
 
-            url = f"https://cordis.europa.eu/project/id/{ref}"
+            # URL
+            if topic.get("identifier"):
+                url = (
+                    "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/"
+                    f"opportunities/topic-details/{identifier.lower()}"
+                )
+            else:
+                url = f"https://cordis.europa.eu/project/id/{identifier}"
+
+            agency = f"European Commission / {programme_name}" if programmes else "European Commission"
 
             return Grant(
-                id=f"eu-{ref}",
-                title=title,
-                agency=f"European Commission / {programme_name}",
+                id=f"eu-{identifier}",
+                title=full_title,
+                agency=agency,
                 source=self.name,
-                deadline=end_date,
+                deadline=deadline,
                 amount_min=None,
                 amount_max=amount_max,
                 duration_months=None,
                 url=url,
                 description=str(description)[:2000],
                 keywords=[],
-                raw_data=item,
+                raw_data=topic,
                 fetched_at=datetime.utcnow(),
             )
         except Exception as exc:
             logger.debug("[eu] parse error: %s", exc)
             return None
-
-    @staticmethod
-    def _parse_cordis_date(value: str) -> Optional[date]:
-        if not value:
-            return None
-
-        # Handle template vars like "1 {{month_03}} 2026"
-        m = re.match(r"(\d{1,2})\s+\{\{month_(\d{2})\}\}\s+(\d{4})", value)
-        if m:
-            try:
-                return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-            except ValueError:
-                pass
-
-        # Handle "1 March 2026"
-        m = re.match(r"(\d{1,2})\s+(\w+)\s+(\d{4})", value)
-        if m:
-            month_num = MONTH_MAP.get(m.group(2).lower())
-            if month_num:
-                try:
-                    return date(int(m.group(3)), month_num, int(m.group(1)))
-                except ValueError:
-                    pass
-
-        for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(value[:19], fmt).date()
-            except ValueError:
-                continue
-        return None

@@ -18,7 +18,10 @@ from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
 
-GATES_GC_URL = "https://gcgh.grandchallenges.org/challenges"
+GATES_GC_URLS = [
+    "https://gcgh.grandchallenges.org/grant-opportunities",
+    "https://www.grandchallenges.org/grant-opportunities",
+]
 
 HEADERS = {
     "User-Agent": (
@@ -41,12 +44,14 @@ class GatesGCCollector(BaseCollector):
         grants: List[Grant] = []
         seen_ids: set = set()
 
-        try:
-            fetched = self._fetch_page(GATES_GC_URL, seen_ids)
-            grants.extend(fetched)
-            logger.info("[gates_gc] %s -> %d grants", GATES_GC_URL, len(fetched))
-        except Exception as exc:
-            logger.error("[gates_gc] Error fetching challenges: %s", exc)
+        for url in GATES_GC_URLS:
+            try:
+                fetched = self._fetch_page(url, seen_ids)
+                grants.extend(fetched)
+                logger.info("[gates_gc] %s -> %d grants", url, len(fetched))
+                time.sleep(1)
+            except Exception as exc:
+                logger.error("[gates_gc] Error fetching %s: %s", url, exc)
 
         logger.info("[gates_gc] Total collected: %d grants", len(grants))
         return grants

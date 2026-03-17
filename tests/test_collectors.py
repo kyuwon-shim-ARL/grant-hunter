@@ -18,28 +18,33 @@ from grant_hunter.models import Grant
 def test_nih_parse_returns_grant():
     collector = NIHCollector()
     item = {
-        "project_num": "R01-AI123456",
-        "project_title": "Machine Learning for AMR Detection",
-        "abstract_text": "Using AI to detect antimicrobial resistance patterns.",
-        "organization": {"org_name": "Harvard Medical School"},
-        "award_amount": 500000,
-        "project_start_date": "2024-01-01T00:00:00Z",
-        "project_end_date": "2026-12-31T00:00:00Z",
-        "project_detail_url": "https://reporter.nih.gov/project-details/R01-AI123456",
-        "terms": "AMR; machine learning; antibiotic resistance",
+        "number": "PAR-26-116",
+        "title": "Machine Learning for AMR Detection",
+        "agencyCode": "NIH-NIAID",
+        "closeDate": "12/31/2026",
+        "id": 12345,
     }
-    grant = collector._parse(item)
+    detail = {
+        "synopsis": {
+            "synopsisDesc": "Using AI to detect antimicrobial resistance patterns.",
+            "awardFloor": 100000,
+            "awardCeiling": 500000,
+        }
+    }
+    grant = collector._parse(item, detail=detail)
     assert grant is not None
     assert isinstance(grant, Grant)
-    assert grant.id == "R01-AI123456"
+    assert grant.id == "PAR-26-116"
     assert grant.source == "nih"
-    assert grant.agency == "Harvard Medical School"
+    assert grant.agency == "NIH-NIAID"
     assert grant.amount_max == 500000.0
+    assert grant.amount_min == 100000.0
+    assert grant.url == "https://www.grants.gov/search-results-detail/PAR-26-116"
 
 
-def test_nih_parse_returns_none_without_project_num():
+def test_nih_parse_returns_none_without_number():
     collector = NIHCollector()
-    grant = collector._parse({"project_title": "No ID Grant"})
+    grant = collector._parse({"title": "No ID Grant"}, detail=None)
     assert grant is None
 
 
@@ -48,27 +53,22 @@ def test_nih_parse_returns_none_without_project_num():
 def test_eu_parse_returns_grant():
     collector = EUPortalCollector()
     item = {
-        "reference": "101057430",
-        "acronym": "AMRAI",
+        "identifier": "HORIZON-HLTH-2026-AMR-01",
         "title": "AMR Artificial Intelligence Project",
-        "objective": "Research on AMR using AI approaches.",
-        "programme": [{"title": "Horizon Europe"}],
-        "endDate": "2026-12-31",
-        "startDate": "2024-01-01",
-        "totalCost": "2000000",
+        "callTitle": "Horizon Europe Health Call",
+        "deadlineDatesLong": [1893456000000],  # some future epoch ms
     }
     grant = collector._parse(item)
     assert grant is not None
     assert isinstance(grant, Grant)
-    assert grant.id == "eu-101057430"
+    assert grant.id == "eu-HORIZON-HLTH-2026-AMR-01"
     assert grant.source == "eu"
-    assert "AMRAI" in grant.title
-    assert grant.amount_max == 2_000_000.0
+    assert "AMR Artificial Intelligence Project" in grant.title
 
 
-def test_eu_parse_returns_none_without_reference():
+def test_eu_parse_returns_none_without_identifier():
     collector = EUPortalCollector()
-    grant = collector._parse({"title": "No reference item"})
+    grant = collector._parse({"title": "No identifier item"})
     assert grant is None
 
 

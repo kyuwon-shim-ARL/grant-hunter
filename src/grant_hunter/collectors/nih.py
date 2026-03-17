@@ -1,20 +1,28 @@
-"""NIH Reporter API collector."""
+"""NIH funding opportunity collector via Grants.gov API (NIH agency filter)."""
 
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date, datetime
 from typing import List, Optional
 
 import requests
 
 from grant_hunter.collectors.base import BaseCollector
-from grant_hunter.config import NIH_API_URL, NIH_PAGE_SIZE, NIH_MAX_PAGES, REQUEST_TIMEOUT
+from grant_hunter.config import REQUEST_TIMEOUT
 from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
 
-# Keywords to search in NIH Reporter
+GRANTS_GOV_SEARCH_URL = "https://api.grants.gov/v1/api/search2"
+GRANTS_GOV_DETAIL_URL = "https://api.grants.gov/v1/api/fetchOpportunity"
+
+NIH_AGENCY_CODE = "HHS-NIH11"
+ROWS_PER_PAGE = 25
+MAX_RESULTS_PER_TERM = 250
+DETAIL_RATE_LIMIT = 0.5  # seconds between detail fetches
+
 NIH_SEARCH_TERMS = [
     "antimicrobial resistance",
     "antibiotic resistance",
@@ -36,48 +44,28 @@ class NIHCollector(BaseCollector):
             try:
                 fetched = self._search(term, seen_ids)
                 grants.extend(fetched)
-                logger.info("[nih] Term '%s' -> %d new grants", term, len(fetched))
+                logger.info("[nih] Term '%s' -> %d new opportunities", term, len(fetched))
             except Exception as exc:
                 logger.error("[nih] Error searching '%s': %s", term, exc)
 
-        logger.info("[nih] Total collected: %d unique grants", len(grants))
+        logger.info("[nih] Total collected: %d unique opportunities", len(grants))
         return grants
 
     def _search(self, term: str, seen_ids: set) -> List[Grant]:
         results: List[Grant] = []
+        start = 0
 
-        for page in range(NIH_MAX_PAGES):
-            offset = page * NIH_PAGE_SIZE
+        while start < MAX_RESULTS_PER_TERM:
             payload = {
-                "criteria": {
-                    "advanced_text_search": {
-                        "operator": "and",
-                        "search_field": "all",
-                        "search_text": term,
-                    }
-                },
-                "include_fields": [
-                    "ProjectNum",
-                    "ProjectTitle",
-                    "AbstractText",
-                    "Organization",
-                    "AgencyCode",
-                    "FiscalYear",
-                    "AwardAmount",
-                    "ProjectStartDate",
-                    "ProjectEndDate",
-                    "ProjectDetailUrl",
-                    "Terms",
-                    "PrincipalInvestigators",
-                ],
-                "offset": offset,
-                "limit": NIH_PAGE_SIZE,
-                "sort_field": "project_start_date",
-                "sort_order": "desc",
+                "rows": ROWS_PER_PAGE,
+                "startRecordNum": start,
+                "agencies": NIH_AGENCY_CODE,
+                "oppStatuses": "posted|forecasted",
+                "keyword": term,
             }
 
             resp = requests.post(
-                NIH_API_URL,
+                GRANTS_GOV_SEARCH_URL,
                 json=payload,
                 timeout=REQUEST_TIMEOUT,
                 headers={"Content-Type": "application/json"},
@@ -85,62 +73,83 @@ class NIHCollector(BaseCollector):
             resp.raise_for_status()
             data = resp.json()
 
-            hits = data.get("results", [])
+            hits = (data.get("data") or {}).get("oppHits", [])
             if not hits:
                 break
 
             for item in hits:
-                grant = self._parse(item)
-                if grant and grant.id not in seen_ids:
-                    seen_ids.add(grant.id)
-                    results.append(grant)
+                opp_number = item.get("number", "")
+                if not opp_number or opp_number in seen_ids:
+                    continue
 
-            total = data.get("meta", {}).get("total", 0)
-            if offset + NIH_PAGE_SIZE >= total:
+                grant = self._fetch_and_parse(item)
+                if grant:
+                    seen_ids.add(opp_number)
+                    results.append(grant)
+                    time.sleep(DETAIL_RATE_LIMIT)
+
+            if len(hits) < ROWS_PER_PAGE:
                 break
+
+            start += ROWS_PER_PAGE
 
         return results
 
-    def _parse(self, item: dict) -> Optional[Grant]:
+    def _fetch_and_parse(self, summary: dict) -> Optional[Grant]:
+        """Fetch detail for one opportunity and return a Grant."""
+        opp_id = summary.get("id")
+        if not opp_id:
+            return self._parse(summary, detail=None)
+
         try:
-            project_num = item.get("project_num") or item.get("ProjectNum", "")
-            if not project_num:
+            resp = requests.post(
+                GRANTS_GOV_DETAIL_URL,
+                json={"opportunityId": int(opp_id)},
+                timeout=REQUEST_TIMEOUT,
+                headers={"Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            detail_data = resp.json().get("data", {})
+        except Exception as exc:
+            logger.debug("[nih] detail fetch error for id=%s: %s", opp_id, exc)
+            detail_data = None
+
+        return self._parse(summary, detail=detail_data)
+
+    def _parse(self, item: dict, detail: Optional[dict] = None) -> Optional[Grant]:
+        try:
+            opp_number = item.get("number", "")
+            if not opp_number:
                 return None
 
-            title = item.get("project_title") or item.get("ProjectTitle", "") or ""
-            abstract = item.get("abstract_text") or item.get("AbstractText", "") or ""
+            title = item.get("title", "") or ""
+            agency_code = item.get("agencyCode", "") or "NIH"
 
-            org = item.get("organization", {}) or {}
-            agency_name = org.get("org_name", "") or item.get("agency_code", "") or "NIH"
+            synopsis = detail.get("synopsis", {}) if detail else {}
+            description = synopsis.get("synopsisDesc", "") or ""
 
-            award_amt = item.get("award_amount") or 0
-            amount_val = float(award_amt) if award_amt else None
+            award_floor = synopsis.get("awardFloor") if synopsis else None
+            award_ceiling = synopsis.get("awardCeiling") if synopsis else None
+            amount_min = float(award_floor) if award_floor else None
+            amount_max = float(award_ceiling) if award_ceiling else None
 
-            end_date = self._parse_date(item.get("project_end_date"))
-            start_date = self._parse_date(item.get("project_start_date"))
+            close_date_str = item.get("closeDate", "")
+            deadline = self._parse_date(close_date_str)
 
-            duration = None
-            if start_date and end_date:
-                months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
-                duration = max(1, months)
-
-            url = item.get("project_detail_url") or f"https://reporter.nih.gov/project-details/{project_num}"
-
-            terms_raw = item.get("terms", "") or ""
-            kw_list = [t.strip() for t in terms_raw.split(";") if t.strip()]
+            url = f"https://www.grants.gov/search-results-detail/{opp_number}"
 
             return Grant(
-                id=project_num,
+                id=opp_number,
                 title=title,
-                agency=agency_name,
+                agency=agency_code,
                 source=self.name,
-                deadline=end_date,
-                amount_min=amount_val,
-                amount_max=amount_val,
-                duration_months=duration,
+                deadline=deadline,
+                amount_min=amount_min,
+                amount_max=amount_max,
+                duration_months=None,
                 url=url,
-                description=abstract[:2000],
-                keywords=kw_list[:20],
+                description=description[:2000],
+                keywords=[],
                 raw_data=item,
                 fetched_at=datetime.utcnow(),
             )
@@ -152,7 +161,7 @@ class NIHCollector(BaseCollector):
     def _parse_date(value) -> Optional[date]:
         if not value:
             return None
-        for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d", "%m/%d/%Y"):
+        for fmt in ("%m/%d/%Y", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
             try:
                 return datetime.strptime(str(value)[:19], fmt).date()
             except ValueError:

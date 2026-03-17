@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 GOOGLE_ORG_URLS = [
     "https://www.google.org/impact-challenges/",
-    "https://www.google.org/our-work/",
 ]
 
 HEADERS = {

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 PASTEUR_URLS = [
     "https://www.pasteur.fr/en/international/international-calls/incentive-programs",
-    "https://pasteur-network.org/",
+    "https://pasteur-network.org/news_type/news/",
 ]
 
 HEADERS = {

@@ -42,10 +42,10 @@ _DRUG_KW: List[str] = _flatten(_KW, "drug_discovery")
 
 # Category weights must sum to 1.0
 _WEIGHTS = {
-    "amr": 0.45,
-    "ai": 0.35,
-    "drug": 0.15,
-    "amount": 0.05,
+    "amr": 0.40,
+    "ai": 0.30,
+    "drug": 0.20,
+    "amount": 0.10,
 }
 
 # Amount thresholds for bonus (USD)
@@ -82,7 +82,9 @@ def _tf(tokens: List[str], phrase: str) -> float:
         phrase_str = " ".join(phrase_tokens)
         text_str = " ".join(tokens)
         count = len(re.findall(re.escape(phrase_str), text_str))
-    return count / n
+    # Normalize by log(1 + doc_length) to prevent long documents from
+    # systematically diluting term frequency relative to short ones.
+    return (count / n) / math.log1p(n)
 
 
 def _keyword_score(text: str, keywords: List[str]) -> float:

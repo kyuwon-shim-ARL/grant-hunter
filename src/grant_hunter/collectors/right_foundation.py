@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 RIGHT_URLS = [
     "https://rightfoundation.kr/en/funding-opportunities/",
-    "https://rightfoundation.kr/en/",
+    "https://rightfoundation.kr/en/last-notice/",
 ]
 
 HEADERS = {
