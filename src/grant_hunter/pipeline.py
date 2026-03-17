@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import subprocess
 import sys
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -23,7 +24,7 @@ from grant_hunter.filters import filter_grants, diff_grants
 from grant_hunter.models import Grant
 from grant_hunter.report_generator import generate_html_report
 from grant_hunter.dashboard import generate_dashboard
-from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR
+from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR, SNAPSHOTS_DIR
 
 logger = logging.getLogger("pipeline")
 _logging_configured = False
@@ -48,6 +49,42 @@ def _setup_logging() -> None:
 
 
 CollectorStats = Dict[str, dict]
+
+
+def validate_grant(grant_dict: dict) -> tuple[bool, str]:
+    """Validate a grant dict has minimum required fields.
+    Returns (is_valid, reason).
+    """
+    if not grant_dict.get("title", "").strip():
+        return False, "missing title"
+    desc = grant_dict.get("description", "").strip()
+    if len(desc) < 50:
+        return False, f"description too short ({len(desc)} chars)"
+    return True, "ok"
+
+
+def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3) -> list:
+    """Run collector_fn with exponential backoff retry. Returns list of grants."""
+    for attempt in range(max_retries):
+        try:
+            return collector_fn()
+        except Exception as exc:
+            wait = 2 ** attempt  # 1s, 2s, 4s
+            print(f"  Warning: {source_name} attempt {attempt+1}/{max_retries} failed: {exc}")
+            if attempt < max_retries - 1:
+                time.sleep(wait)
+    print(f"  ERROR: {source_name} failed after {max_retries} attempts")
+    return []
+
+
+def check_staleness(snapshot_dir: Path, max_age_hours: int = 48) -> list:
+    """Return list of stale source names (snapshot files older than max_age_hours)."""
+    stale = []
+    for f in snapshot_dir.glob("*.json"):
+        age = datetime.now() - datetime.fromtimestamp(f.stat().st_mtime)
+        if age > timedelta(hours=max_age_hours):
+            stale.append(f.stem)
+    return stale
 
 
 def _run_collector(collector: BaseCollector) -> Tuple[List[Grant], dict]:
@@ -128,6 +165,8 @@ def run_pipeline() -> dict:
     all_previous: List[Grant] = []
     stats: CollectorStats = {}
     is_first_run_any = False
+    validation_passed = 0
+    validation_rejected = 0
 
     # ── 1. Collect from all sources ────────────────────────────────────────────
     for collector in collectors:
@@ -140,6 +179,19 @@ def run_pipeline() -> dict:
         stats[collector.name] = src_stats
 
         if grants:
+            # Validate each grant before including
+            valid_grants = []
+            for g in grants:
+                grant_dict = {"title": g.title, "description": g.description}
+                ok, reason = validate_grant(grant_dict)
+                if ok:
+                    valid_grants.append(g)
+                    validation_passed += 1
+                else:
+                    validation_rejected += 1
+                    logger.debug("[%s] Rejected grant '%s': %s", collector.name, g.title, reason)
+            grants = valid_grants
+
             # Save today's snapshot
             collector.save_snapshot(grants)
 
@@ -150,6 +202,7 @@ def run_pipeline() -> dict:
 
     total_collected = sum(s["collected"] for s in stats.values())
     logger.info("Total collected across all sources: %d", total_collected)
+    logger.info("Validation: %d passed, %d rejected", validation_passed, validation_rejected)
 
     # ── 2. Cross-source deduplication (title similarity) ─────────────────────
     deduped = _dedup(all_current)
@@ -226,7 +279,24 @@ def run_pipeline() -> dict:
         )
         email_sent = _send_email_report(subject, body_text, report_path)
 
-    # ── 9. Print summary ──────────────────────────────────────────────────────
+    # ── 9. Staleness check ────────────────────────────────────────────────────
+    stale_sources = check_staleness(SNAPSHOTS_DIR)
+
+    # ── 10. Print collection summary ─────────────────────────────────────────
+    print("\nCollection Summary:")
+    for src, s in stats.items():
+        count = s["collected"]
+        if not s["success"]:
+            status = f"ERROR: {s['error']}"
+        elif count == 0:
+            status = "WARNING: empty"
+        else:
+            status = "OK"
+        print(f"  {src}: {count} grants ({status})")
+    total_validated = validation_passed + validation_rejected
+    print(f"  Validation: {validation_passed}/{total_validated} passed, {validation_rejected} rejected")
+    print(f"  Stale sources: {', '.join(stale_sources) if stale_sources else 'none'}")
+
     summary = {
         "run_at": run_start.isoformat(),
         "total_collected": total_collected,
@@ -241,6 +311,9 @@ def run_pipeline() -> dict:
         "report_path": str(report_path),
         "dashboard_path": str(dashboard_path),
         "sources": stats,
+        "validation_passed": validation_passed,
+        "validation_rejected": validation_rejected,
+        "stale_sources": stale_sources,
     }
 
     logger.info("-" * 60)
@@ -255,6 +328,7 @@ def run_pipeline() -> dict:
     logger.info("  Email sent: %s", email_sent)
     logger.info("  Report    : %s", report_path)
     logger.info("  Dashboard : %s", dashboard_path)
+    logger.info("  Stale sources: %s", stale_sources or "none")
     for src, s in stats.items():
         ok = "OK" if s["success"] else f"FAIL({s['error']})"
         logger.info("  [%s] collected=%d filtered=%d status=%s", src, s["collected"], s["filtered"], ok)

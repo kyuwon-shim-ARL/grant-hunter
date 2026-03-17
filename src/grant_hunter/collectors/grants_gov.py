@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date, datetime
 from typing import List, Optional
 
@@ -13,6 +14,8 @@ from grant_hunter.config import GRANTS_GOV_API_URL, GRANTS_GOV_PAGE_SIZE, GRANTS
 from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
+
+DETAIL_URL = "https://api.grants.gov/v1/api/fetchOpportunity"
 
 SEARCH_KEYWORDS = [
     "antimicrobial resistance",
@@ -40,8 +43,52 @@ class GrantsGovCollector(BaseCollector):
             except Exception as exc:
                 logger.error("[grants_gov] Error searching '%s': %s", keyword, exc)
 
+        # Second pass: enrich each grant with full description from detail endpoint
+        session = requests.Session()
+        session.headers.update({
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "grant_hunter/1.0",
+        })
+        for grant in grants:
+            try:
+                detail = self._fetch_detail(session, grant.id)
+                if detail:
+                    synopsis_desc = detail.get("synopsis", {}).get("synopsisDesc", "")
+                    if synopsis_desc and len(synopsis_desc) > len(grant.description or ""):
+                        grant.description = str(synopsis_desc)[:2000]
+
+                    award_floor = self._safe_float(detail.get("synopsis", {}).get("awardFloor", 0))
+                    award_ceiling = self._safe_float(detail.get("synopsis", {}).get("awardCeiling", 0))
+                    if award_floor and not grant.amount_min:
+                        grant.amount_min = award_floor
+                    if award_ceiling and not grant.amount_max:
+                        grant.amount_max = award_ceiling
+            except Exception as exc:
+                logger.debug("[grants_gov] Detail enrich failed for %s: %s", grant.id, exc)
+            time.sleep(0.3)
+
         logger.info("[grants_gov] Total collected: %d unique grants", len(grants))
         return grants
+
+    def _fetch_detail(self, session: requests.Session, opp_id: str) -> Optional[dict]:
+        """Fetch full opportunity detail from the fetchOpportunity endpoint."""
+        try:
+            # opportunityId must be an integer; skip non-numeric IDs
+            int_id = int(opp_id)
+        except (ValueError, TypeError):
+            return None
+        try:
+            resp = session.post(
+                DETAIL_URL,
+                json={"opportunityId": int_id},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json().get("data", {})
+        except Exception as exc:
+            logger.debug("[grants_gov] fetchOpportunity failed for %s: %s", opp_id, exc)
+            return None
 
     def _search(self, keyword: str, seen_ids: set) -> List[Grant]:
         results: List[Grant] = []
