@@ -39,6 +39,24 @@ AMR_KEYWORDS: List[str] = _flatten("amr")
 AI_KEYWORDS: List[str] = _flatten("ai")
 DRUG_KEYWORDS: List[str] = _flatten("drug_discovery")
 
+# Core AMR keywords that are highly specific to antimicrobial resistance
+# (vs broad terms like "surveillance" that appear in many contexts)
+AMR_CORE_KEYWORDS: List[str] = [
+    kw for kw in AMR_KEYWORDS
+    if kw.lower() in {
+        "antimicrobial resistance", "antibiotic resistance", "drug-resistant",
+        "amr", "multidrug-resistant", "mdr", "xdr", "mrsa", "eskape",
+        "resistant pathogen", "resistant bacteria", "antibiotic stewardship",
+        "antimicrobial stewardship", "beta-lactamase", "esbl",
+        "extended-spectrum beta-lactamase", "carbapenemase", "ndm-1",
+        "oxa-48", "kpc", "vim", "imp", "ctx-m", "bacteriophage",
+        "phage therapy", "antimicrobial peptide", "resistance gene",
+        "resistome", "colistin", "carbapenem", "polymyxin",
+        "항생제 내성", "항균제 내성", "다제내성", "슈퍼박테리아", "내성균",
+        "카바페넴 내성", "내성유전자",
+    }
+]
+
 
 def _count_hits(text: str, keywords: List[str]) -> Tuple[int, List[str]]:
     """Return (hit_count, matched_keywords) for case-insensitive whole-word search."""
@@ -52,11 +70,19 @@ def _count_hits(text: str, keywords: List[str]) -> Tuple[int, List[str]]:
 
 
 def passes_keyword_gate(grant: Grant) -> bool:
-    """Check if grant passes the AMR AND AI keyword threshold."""
+    """Check if grant passes the AMR AND AI keyword threshold.
+
+    Requires at least 1 core AMR keyword OR 2+ broad AMR keywords,
+    AND at least 1 AI keyword.
+    """
     searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
     amr_hits, _ = _count_hits(searchable, AMR_KEYWORDS)
+    amr_core_hits, _ = _count_hits(searchable, AMR_CORE_KEYWORDS)
     ai_hits, _ = _count_hits(searchable, AI_KEYWORDS)
-    return amr_hits >= MIN_AMR_HITS and ai_hits >= MIN_AI_HITS
+
+    amr_pass = amr_core_hits >= MIN_AMR_HITS or amr_hits >= 2
+    ai_pass = ai_hits >= MIN_AI_HITS
+    return amr_pass and ai_pass
 
 
 def filter_grants(grants: List[Grant]) -> List[Grant]:
