@@ -82,9 +82,8 @@ def _tf(tokens: List[str], phrase: str) -> float:
         phrase_str = " ".join(phrase_tokens)
         text_str = " ".join(tokens)
         count = len(re.findall(re.escape(phrase_str), text_str))
-    # Normalize by log(1 + doc_length) to prevent long documents from
-    # systematically diluting term frequency relative to short ones.
-    return (count / n) / math.log1p(n)
+    # Log-normalized TF: dampens both raw count and document length
+    return math.log1p(count) / math.log1p(n)
 
 
 def _keyword_score(text: str, keywords: List[str]) -> float:

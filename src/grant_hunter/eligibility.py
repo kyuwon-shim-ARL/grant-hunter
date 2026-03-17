@@ -88,7 +88,13 @@ _US_ONLY = [
 ]
 
 # NIH programmes that explicitly allow foreign institutions
-_NIH_FOREIGN_ELIGIBLE_IDS = {"r01", "r21", "r03", "r15", "r34", "u01", "u54"}
+_NIH_FOREIGN_ELIGIBLE_IDS = {
+    "r01", "r21", "r03", "r15", "r34", "r33", "r61", "r37",
+    "u01", "u54", "u19", "ub1",
+    "p01", "p50",
+    "rm1",
+    "par", "rfa",  # Programme announcements generally allow foreign
+}
 
 # Rule 4 – Non-profit / research institute positive signals
 _NONPROFIT_POSITIVE = [

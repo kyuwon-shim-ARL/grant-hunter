@@ -57,7 +57,7 @@ class GrantsGovCollector(BaseCollector):
                 if detail:
                     synopsis_desc = detail.get("synopsis", {}).get("synopsisDesc", "")
                     if synopsis_desc and len(synopsis_desc) > len(grant.description or ""):
-                        grant.description = str(synopsis_desc)[:2000]
+                        grant.description = str(synopsis_desc)[:5000]
 
                     award_floor = self._safe_float(detail.get("synopsis", {}).get("awardFloor", 0))
                     award_ceiling = self._safe_float(detail.get("synopsis", {}).get("awardCeiling", 0))
@@ -186,7 +186,7 @@ class GrantsGovCollector(BaseCollector):
                 amount_max=award_ceiling,
                 duration_months=None,
                 url=url,
-                description=str(description)[:2000],
+                description=str(description)[:5000],
                 keywords=[],
                 raw_data=item,
                 fetched_at=datetime.utcnow(),

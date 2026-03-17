@@ -171,7 +171,7 @@ class NIHCollector(BaseCollector):
                 amount_max=amount_max,
                 duration_months=None,
                 url=url,
-                description=description[:2000],
+                description=description[:5000],
                 keywords=[],
                 raw_data=item,
                 fetched_at=datetime.utcnow(),

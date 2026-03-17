@@ -79,10 +79,11 @@ class EUPortalCollector(BaseCollector):
             if status_abbr not in OPEN_STATUSES:
                 continue
 
-            # Keyword match on title + callTitle
+            # Keyword match on title + callTitle + objective
             title = topic.get("title", "") or ""
             call_title = topic.get("callTitle", "") or ""
-            combined = f"{title} {call_title}".lower()
+            objective = topic.get("objective", "") or ""
+            combined = f"{title} {call_title} {objective}".lower()
 
             if any(kw.lower() in combined for kw in AMR_AI_KEYWORDS):
                 filtered.append(topic)
@@ -169,7 +170,7 @@ class EUPortalCollector(BaseCollector):
                 amount_max=amount_max,
                 duration_months=None,
                 url=url,
-                description=str(description)[:2000],
+                description=str(description)[:5000],
                 keywords=[],
                 raw_data=topic,
                 fetched_at=datetime.utcnow(),

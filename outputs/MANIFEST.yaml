@@ -259,3 +259,30 @@ experiments:
     milestone: "v2.2 - 데이터 품질 정밀화"
     hypothesis: "AMR-only tier2 추가로 필터 통과 grant 수 3배 이상 증가, AMR+AI tier1은 상위 유지"
     result: "passes_keyword_gate() tier1/tier2/skip 반환. tier2(AMR-only) score×0.5 페널티. 107 tests pass."
+  e031:
+    title: "EU pre-filter objective 필드 추가"
+    status: validated
+    issue: 31
+    created: "2026-03-18"
+    depends_on: [e018]
+    milestone: "v2.3 - 데이터 품질 정밀화 II"
+    hypothesis: "EU pre-filter에 objective 필드 포함으로 EU grant recall 회복"
+    result: "title+callTitle→title+callTitle+objective 확장. EU AMR grant가 objective에만 키워드 있는 경우도 수집."
+  e032:
+    title: "TF 이중정규화 수정 + description 절단 확대"
+    status: validated
+    issue: 32
+    created: "2026-03-18"
+    depends_on: [e022]
+    milestone: "v2.3 - 데이터 품질 정밀화 II"
+    hypothesis: "log1p(count)/log1p(n) 정규화로 15.8x 길이 편향 제거, 5000자 절단으로 키워드 유실 방지"
+    result: "(count/n)/log1p(n)→log1p(count)/log1p(n) 전환. description 절단 2000→5000자 (NIH/EU/Grants.gov). 107 tests pass."
+  e033:
+    title: "NIH foreign-eligible mechanism set 확장"
+    status: validated
+    issue: 33
+    created: "2026-03-18"
+    depends_on: [e026]
+    milestone: "v2.3 - 데이터 품질 정밀화 II"
+    hypothesis: "7→15 mechanism code로 PAR/RFA/P01 등 foreign-eligible 인식률 향상"
+    result: "r33,r61,r37,ub1,u19,p01,p50,rm1,par,rfa 추가. 7→15 codes. 107 tests pass."
