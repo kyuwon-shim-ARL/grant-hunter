@@ -126,8 +126,9 @@ experiments:
     result: "5개 프로필 프리셋. profiles.py + RelevanceScorer 프로필 지원. HTML 프로필 드롭다운 + 클라이언트 재스코어링. 63 tests pass."
   e016:
     title: "MECE 계층 분류 + 인터랙티브 리포트 재설계"
-    status: experimental
+    status: validated
     issue: 16
     created: "2026-03-17"
     depends_on: [e014, e015]
     hypothesis: "3축 분류 + 우선순위 티어링으로 미분류 비율 5% 미만, 각 티어별 분포가 Tier1<Tier2<Tier3<Tier4를 달성한다"
+    result: "3축 분류(research_stage×funding_type×urgency) + 4-tier 우선순위. 미분류 4.2%(<5%). T1(128)<T2(896)<T3(1584)<T4(2480) 단조 분포 달성. 82 tests pass."

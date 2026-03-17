@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from grant_hunter.models import Grant
 from grant_hunter.eligibility import EligibilityEngine
 from grant_hunter.scoring import RelevanceScorer
+from grant_hunter.classifier import GrantClassifier
 from grant_hunter.config import init_data_dirs, SNAPSHOTS_DIR, REPORTS_DIR
 
 
@@ -33,6 +34,7 @@ def load_grants() -> list[dict]:
 
     engine = EligibilityEngine()
     scorer = RelevanceScorer()
+    classifier = GrantClassifier()
     grants: list[dict] = []
     seen: set[str] = set()
 
@@ -99,6 +101,15 @@ def load_grants() -> list[dict]:
             d["score_amount"] = bd["amount_bonus"]
             d["eligibility_status"] = result.status
             d["eligibility_reason"] = result.reason
+
+            # Classification (3-axis + tier)
+            grant.eligibility_status = result.status
+            cls = classifier.classify(grant)
+            d["research_stage"] = cls.research_stage
+            d["funding_type"] = cls.funding_type
+            d["urgency"] = cls.urgency
+            d["tier"] = cls.tier
+            d["tier_label"] = cls.tier_label
 
             grants.append(d)
 
@@ -672,6 +683,61 @@ body {{
   flex-shrink: 0;
 }}
 
+/* ── Tier badges ── */
+.badge-tier1 {{ background: #b71c1c; }}
+.badge-tier2 {{ background: #e65100; }}
+.badge-tier3 {{ background: #1565c0; }}
+.badge-tier4 {{ background: #78909c; }}
+
+/* ── Tier section headers ── */
+.tier-section {{
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .75rem 0 .25rem;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: .25rem;
+}}
+.tier-section:first-child {{ padding-top: 0; }}
+.tier-dot {{
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}}
+.tier-dot.t1 {{ background: #b71c1c; }}
+.tier-dot.t2 {{ background: #e65100; }}
+.tier-dot.t3 {{ background: #1565c0; }}
+.tier-dot.t4 {{ background: #78909c; }}
+.tier-title {{
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--text);
+}}
+.tier-count {{
+  font-size: .75rem;
+  color: var(--text-muted);
+  background: var(--surface2);
+  padding: .15rem .5rem;
+  border-radius: 4px;
+}}
+
+/* ── Research stage chips ── */
+.stage-chip {{
+  font-size: .65rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  padding: .15rem .4rem;
+  border-radius: 3px;
+  border: 1px solid;
+}}
+.stage-basic          {{ color: #1565c0; border-color: #1565c0; background: #e3f2fd; }}
+.stage-translational  {{ color: #6a1b9a; border-color: #6a1b9a; background: #f3e5f5; }}
+.stage-clinical       {{ color: #c62828; border-color: #c62828; background: #ffebee; }}
+.stage-infrastructure {{ color: #2e7d32; border-color: #2e7d32; background: #e8f5e9; }}
+.stage-unclassified   {{ color: #78909c; border-color: #78909c; background: #eceff1; }}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
 ::-webkit-scrollbar-track {{ background: transparent; }}
@@ -730,8 +796,24 @@ body {{
       <option value="90">Next 90 days</option>
       <option value="none">No Deadline</option>
     </select>
+    <select class="filter-select" id="tierFilter">
+      <option value="">All Tiers</option>
+      <option value="tier1">Tier 1: Must Apply</option>
+      <option value="tier2">Tier 2: Strong Fit</option>
+      <option value="tier3">Tier 3: Worth Monitoring</option>
+      <option value="tier4">Tier 4: Low Priority</option>
+    </select>
+    <select class="filter-select" id="stageFilter">
+      <option value="">All Stages</option>
+      <option value="clinical">Clinical</option>
+      <option value="translational">Translational</option>
+      <option value="basic">Basic Research</option>
+      <option value="infrastructure">Infrastructure</option>
+      <option value="unclassified">Unclassified</option>
+    </select>
     <select class="filter-select" id="sortSelect">
       <option value="relevance">Sort: Relevance</option>
+      <option value="tier">Sort: Tier</option>
       <option value="deadline">Sort: Deadline</option>
       <option value="amount">Sort: Amount</option>
       <option value="title">Sort: Title</option>
@@ -773,11 +855,26 @@ const PROFILES = {{
   clinical:      {{amr: 0.45, ai: 0.15, drug: 0.30, amount: 0.10}},
 }};
 
+function assignTier(g) {{
+  const elig = g.eligibility_status;
+  const score = g.relevance_score;
+  if (score >= 0.40 && elig === 'eligible') {{
+    g.tier = 'tier1'; g.tier_label = 'Must Apply';
+  }} else if (score >= 0.28 && (elig === 'eligible' || elig === 'uncertain')) {{
+    g.tier = 'tier2'; g.tier_label = 'Strong Fit';
+  }} else if (score >= 0.20) {{
+    g.tier = 'tier3'; g.tier_label = 'Worth Monitoring';
+  }} else {{
+    g.tier = 'tier4'; g.tier_label = 'Low Priority';
+  }}
+}}
+
 function reScore(profileKey) {{
   const w = PROFILES[profileKey] || PROFILES.default;
   GRANTS.forEach(g => {{
     const raw = w.amr * g.score_amr + w.ai * g.score_ai + w.drug * g.score_drug + w.amount * g.score_amount;
     g.relevance_score = Math.round(Math.min(raw, 1.0) * 1000) / 1000;
+    assignTier(g);
   }});
   applyFilters();
   buildSummary();
@@ -787,6 +884,14 @@ function reScore(profileKey) {{
 const PAGE_SIZE = 50;
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
+
+const TIER_META = {{
+  tier1: {{label:'Must Apply', color:'#b71c1c', dot:'t1'}},
+  tier2: {{label:'Strong Fit', color:'#e65100', dot:'t2'}},
+  tier3: {{label:'Worth Monitoring', color:'#1565c0', dot:'t3'}},
+  tier4: {{label:'Low Priority', color:'#78909c', dot:'t4'}},
+}};
+const TIER_ORDER = {{tier1:0, tier2:1, tier3:2, tier4:3}};
 
 const SOURCE_COLORS = {{
   nih:              '#1a73e8',
@@ -898,6 +1003,10 @@ function buildSummary() {{
       return `<span class="source-pip" style="background:${{color}}">${{lbl}} ${{n}}</span>`;
     }}).join('');
 
+  // Tier counts
+  const tierCounts = {{tier1:0, tier2:0, tier3:0, tier4:0}};
+  GRANTS.forEach(g => {{ tierCounts[g.tier] = (tierCounts[g.tier]||0)+1; }});
+
   const section = document.getElementById('summarySection');
   section.innerHTML = `
     <div class="summary-card total">
@@ -913,9 +1022,14 @@ function buildSummary() {{
       </div>
     </div>
     <div class="summary-card deadline">
-      <div class="summary-label">Due in 30 Days</div>
-      <div class="summary-value">${{upcoming.toLocaleString()}}</div>
-      <div class="summary-detail"><span>Act now — deadlines approaching</span></div>
+      <div class="summary-label">Priority Tiers</div>
+      <div class="summary-value">${{tierCounts.tier1 + tierCounts.tier2}}</div>
+      <div class="summary-detail">
+        <span class="source-pip" style="background:#b71c1c">T1 ${{tierCounts.tier1}}</span>
+        <span class="source-pip" style="background:#e65100">T2 ${{tierCounts.tier2}}</span>
+        <span class="source-pip" style="background:#1565c0">T3 ${{tierCounts.tier3}}</span>
+        <span class="source-pip" style="background:#78909c">T4 ${{tierCounts.tier4}}</span>
+      </div>
     </div>
     <div class="summary-card score">
       <div class="summary-label">Avg Relevance</div>
@@ -935,12 +1049,15 @@ function cardHtml(g, idx) {{
   const shortDesc = isLong ? desc.slice(0, shortLen) + '…' : desc;
   const amtStr = fmt_amount(g.amount_min, g.amount_max);
 
+  const tm = TIER_META[g.tier] || TIER_META.tier4;
   return `
 <div class="grant-card" id="card-${{idx}}" onclick="toggleDesc(${{idx}})">
   <div class="card-header">
     <div class="card-badges">
+      <span class="badge badge-${{g.tier}}">${{tm.label}}</span>
       ${{sourceBadge(g.source)}}
       ${{eligBadge(g.eligibility_status)}}
+      <span class="stage-chip stage-${{g.research_stage}}">${{g.research_stage}}</span>
     </div>
   </div>
   <div class="card-title">
@@ -997,6 +1114,8 @@ function applyFilters() {{
   const src     = document.getElementById('sourceFilter').value;
   const elig    = document.getElementById('eligFilter').value;
   const deadline= document.getElementById('deadlineFilter').value;
+  const tierF   = document.getElementById('tierFilter').value;
+  const stageF  = document.getElementById('stageFilter').value;
   const sortBy  = document.getElementById('sortSelect').value;
 
   filtered = GRANTS.filter(g => {{
@@ -1009,6 +1128,10 @@ function applyFilters() {{
     if (src && g.source !== src) return false;
     // Eligibility
     if (elig && g.eligibility_status !== elig) return false;
+    // Tier
+    if (tierF && g.tier !== tierF) return false;
+    // Research stage
+    if (stageF && g.research_stage !== stageF) return false;
     // Deadline
     if (deadline) {{
       if (deadline === 'none') {{
@@ -1024,6 +1147,12 @@ function applyFilters() {{
   // Sort
   filtered.sort((a, b) => {{
     if (sortBy === 'relevance') return b.relevance_score - a.relevance_score;
+    if (sortBy === 'tier') {{
+      const tA = TIER_ORDER[a.tier] ?? 9;
+      const tB = TIER_ORDER[b.tier] ?? 9;
+      if (tA !== tB) return tA - tB;
+      return b.relevance_score - a.relevance_score;
+    }}
     if (sortBy === 'title')     return a.title.localeCompare(b.title, 'en', {{sensitivity:'base'}});
     if (sortBy === 'amount') {{
       const aA = Math.max(a.amount_max||0, a.amount_min||0);
@@ -1033,7 +1162,6 @@ function applyFilters() {{
     if (sortBy === 'deadline') {{
       const dA = a.deadline ? daysDiff(a.deadline) : 99999;
       const dB = b.deadline ? daysDiff(b.deadline) : 99999;
-      // expired at the end
       const eA = dA < 0 ? 99998 : dA;
       const eB = dB < 0 ? 99998 : dB;
       return eA - eB;
@@ -1063,7 +1191,24 @@ function renderPage() {{
     return;
   }}
 
-  grid.innerHTML = pageGrants.map((g, i) => cardHtml(g, start + i)).join('');
+  const sortBy = document.getElementById('sortSelect').value;
+  if (sortBy === 'tier') {{
+    // Insert tier section headers
+    let html = '';
+    let lastTier = null;
+    pageGrants.forEach((g, i) => {{
+      if (g.tier !== lastTier) {{
+        const tm = TIER_META[g.tier] || TIER_META.tier4;
+        const tierGrants = filtered.filter(x => x.tier === g.tier);
+        html += `<div class="tier-section"><span class="tier-dot ${{tm.dot}}"></span><span class="tier-title">${{tm.label}}</span><span class="tier-count">${{tierGrants.length}} grants</span></div>`;
+        lastTier = g.tier;
+      }}
+      html += cardHtml(g, start + i);
+    }});
+    grid.innerHTML = html;
+  }} else {{
+    grid.innerHTML = pageGrants.map((g, i) => cardHtml(g, start + i)).join('');
+  }}
   renderPagination();
   // Scroll to top of grid on page change
   grid.scrollIntoView({{behavior:'smooth', block:'start'}});
@@ -1120,7 +1265,7 @@ document.getElementById('searchInput').addEventListener('input', () => {{
   clearTimeout(searchTimer);
   searchTimer = setTimeout(applyFilters, 180);
 }});
-['sourceFilter','eligFilter','deadlineFilter','sortSelect'].forEach(id => {{
+['sourceFilter','eligFilter','deadlineFilter','tierFilter','stageFilter','sortSelect'].forEach(id => {{
   document.getElementById(id).addEventListener('change', applyFilters);
 }});
 document.getElementById('profileSelect').addEventListener('change', function() {{
