@@ -92,6 +92,11 @@ def load_grants() -> list[dict]:
             d["amount_min"] = grant.amount_min
             d["amount_max"] = grant.amount_max
             d["relevance_score"] = round(grant.relevance_score, 3)
+            bd = scorer.score_breakdown(grant)
+            d["score_amr"] = bd["amr"]
+            d["score_ai"] = bd["ai"]
+            d["score_drug"] = bd["drug"]
+            d["score_amount"] = bd["amount_bonus"]
             d["eligibility_status"] = result.status
             d["eligibility_reason"] = result.reason
 
@@ -731,6 +736,13 @@ body {{
       <option value="amount">Sort: Amount</option>
       <option value="title">Sort: Title</option>
     </select>
+    <select class="filter-select" id="profileSelect" title="Researcher profile — re-weights relevance scores">
+      <option value="default">Profile: Balanced</option>
+      <option value="wetlab_amr">Profile: Wet-lab AMR</option>
+      <option value="computational">Profile: Computational</option>
+      <option value="translational">Profile: Translational</option>
+      <option value="clinical">Profile: Clinical</option>
+    </select>
     <div class="filter-count"><span id="filteredCount">{total}</span> grants found</div>
   </div>
 </div>
@@ -751,6 +763,25 @@ body {{
 <script>
 // ── Embedded grant data ──
 const GRANTS = {grants_json};
+
+// ── Researcher profiles ──
+const PROFILES = {{
+  default:       {{amr: 0.40, ai: 0.30, drug: 0.20, amount: 0.10}},
+  wetlab_amr:    {{amr: 0.60, ai: 0.10, drug: 0.25, amount: 0.05}},
+  computational: {{amr: 0.15, ai: 0.60, drug: 0.20, amount: 0.05}},
+  translational: {{amr: 0.25, ai: 0.20, drug: 0.45, amount: 0.10}},
+  clinical:      {{amr: 0.45, ai: 0.15, drug: 0.30, amount: 0.10}},
+}};
+
+function reScore(profileKey) {{
+  const w = PROFILES[profileKey] || PROFILES.default;
+  GRANTS.forEach(g => {{
+    const raw = w.amr * g.score_amr + w.ai * g.score_ai + w.drug * g.score_drug + w.amount * g.score_amount;
+    g.relevance_score = Math.round(Math.min(raw, 1.0) * 1000) / 1000;
+  }});
+  applyFilters();
+  buildSummary();
+}}
 
 // ── Constants ──
 const PAGE_SIZE = 50;
@@ -1091,6 +1122,9 @@ document.getElementById('searchInput').addEventListener('input', () => {{
 }});
 ['sourceFilter','eligFilter','deadlineFilter','sortSelect'].forEach(id => {{
   document.getElementById(id).addEventListener('change', applyFilters);
+}});
+document.getElementById('profileSelect').addEventListener('change', function() {{
+  reScore(this.value);
 }});
 
 // ── Init ──

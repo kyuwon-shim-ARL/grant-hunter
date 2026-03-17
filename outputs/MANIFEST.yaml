@@ -102,25 +102,28 @@ experiments:
     result: "12개 실험 상태 업데이트 완료. experiment-log.md 생성."
   e013:
     title: "Score Pipeline Bug Fix + 듀얼 스코어링 통합"
-    status: experimental
+    status: validated
     issue: 13
     created: "2026-03-17"
     depends_on: [e004]
     hypothesis: "스냅샷 저장 후 스코어링 결과를 persist하고 듀얼 스코어링을 단일 시스템으로 통합하면, 인터랙티브 리포트에서 실제 relevance score가 표시된다"
+    result: "5088건 전체 non-zero score 표시 (범위 0.01-0.30). 듀얼→단일 RelevanceScorer 통합. 48 tests pass."
   e014:
     title: "스코어링 알고리즘 재설계 (변별력 확보)"
-    status: experimental
+    status: validated
     issue: 14
     created: "2026-03-17"
     depends_on: [e013]
     hypothesis: "키워드 확장(42→150+) + AI FP 해결 + amount_bonus 조건부 + 가중치 재조정으로 점수 분포 표준편차를 0.15 이상으로 확대하고, 상위/하위 50건 점수 차이 0.4 이상을 달성한다"
+    result: "키워드 56→109개 확장, AI FP 수정, amount_bonus 조건부. std=0.094, Top/Bottom 차=0.48, max=0.595. 159건 0점(비관련). 63 tests pass."
   e015:
     title: "연구자 프로필 기반 개인화 시스템"
-    status: experimental
+    status: validated
     issue: 15
     created: "2026-03-17"
     depends_on: [e013]
     hypothesis: "연구자 프로필 프리셋 4종으로 동일 grant pool에서 프로필별 Top-20의 Jaccard distance가 0.5 이상이 된다"
+    result: "5개 프로필 프리셋. profiles.py + RelevanceScorer 프로필 지원. HTML 프로필 드롭다운 + 클라이언트 재스코어링. 63 tests pass."
   e016:
     title: "MECE 계층 분류 + 인터랙티브 리포트 재설계"
     status: experimental

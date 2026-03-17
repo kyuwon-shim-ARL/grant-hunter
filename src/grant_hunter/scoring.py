@@ -9,10 +9,13 @@ from __future__ import annotations
 import json
 import math
 import re
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from grant_hunter.config import KEYWORDS_FILE
 from grant_hunter.models import Grant
+
+if TYPE_CHECKING:
+    from grant_hunter.profiles import ResearcherProfile
 
 # ── Keyword loading ───────────────────────────────────────────────────────────
 
@@ -37,12 +40,12 @@ _AMR_KW: List[str] = _flatten(_KW, "amr")
 _AI_KW: List[str] = _flatten(_KW, "ai")
 _DRUG_KW: List[str] = _flatten(_KW, "drug_discovery")
 
-# Category weights must sum to 1.0 (amount bonus is additive after)
+# Category weights must sum to 1.0
 _WEIGHTS = {
-    "amr": 0.4,
-    "ai": 0.3,
-    "drug": 0.2,
-    "amount": 0.1,
+    "amr": 0.45,
+    "ai": 0.35,
+    "drug": 0.15,
+    "amount": 0.05,
 }
 
 # Amount thresholds for bonus (USD)
@@ -63,17 +66,22 @@ def _tokenize(text: str) -> List[str]:
 
 
 def _tf(tokens: List[str], phrase: str) -> float:
-    """Term frequency for a keyword phrase in a token list."""
+    """Term frequency for a keyword phrase in a token list.
+
+    For single-token phrases of 2 characters or fewer, require exact token
+    match to avoid false positives (e.g. 'AI' matching inside 'training').
+    """
     phrase_tokens = re.findall(r"\b\w+\b", phrase.lower())
-    if not phrase_tokens:
+    if not phrase_tokens or not tokens:
         return 0.0
     n = len(tokens)
-    if n == 0:
-        return 0.0
-    # Count non-overlapping phrase occurrences
-    phrase_str = " ".join(phrase_tokens)
-    text_str = " ".join(tokens)
-    count = len(re.findall(re.escape(phrase_str), text_str))
+    # For short single-token keywords, require exact token match
+    if len(phrase_tokens) == 1 and len(phrase_tokens[0]) <= 2:
+        count = tokens.count(phrase_tokens[0])
+    else:
+        phrase_str = " ".join(phrase_tokens)
+        text_str = " ".join(tokens)
+        count = len(re.findall(re.escape(phrase_str), text_str))
     return count / n
 
 
@@ -81,7 +89,8 @@ def _keyword_score(text: str, keywords: List[str]) -> float:
     """Return a normalised [0,1] score for keyword coverage.
 
     Combines:
-    - breadth: fraction of distinct keywords matched
+    - breadth: sqrt-normalised fraction of distinct keywords matched
+      (capped at 10 keywords so matching 3 out of 50 still gives reasonable score)
     - depth: log-scaled TF sum (more occurrences help, with diminishing returns)
     """
     if not keywords or not text:
@@ -99,17 +108,22 @@ def _keyword_score(text: str, keywords: List[str]) -> float:
     if not matched_kw:
         return 0.0
 
-    breadth = len(matched_kw) / len(keywords)
+    # Use sqrt normalization: cap denominator at 10 so 3 matches = 0.3 breadth
+    # instead of 3/50 = 0.06 with the old formula
+    breadth = min(1.0, len(matched_kw) / max(1, min(len(keywords), 10)))
     depth = math.log1p(tf_sum * 100) / math.log1p(100)  # normalised 0–1
 
-    return 0.6 * breadth + 0.4 * depth
+    return 0.5 * breadth + 0.5 * depth
 
 
 def _amount_bonus(grant: Grant) -> float:
-    """Return a [0,1] bonus based on funding amount."""
+    """Return a [0,1] bonus based on funding amount.
+
+    Returns 0.0 for unknown amounts (no free bonus for missing data).
+    """
     amount = grant.amount_max or grant.amount_min
     if amount is None:
-        return 0.1  # neutral; unknown amount
+        return 0.0  # no bonus for unknown amount
     for threshold, score in _AMOUNT_TIERS:
         if amount >= threshold:
             return score
@@ -121,6 +135,11 @@ def _amount_bonus(grant: Grant) -> float:
 class RelevanceScorer:
     """Score a Grant on 0.0–1.0 relevance to IPK's AMR+AI research focus."""
 
+    def __init__(self, profile: Optional["ResearcherProfile"] = None) -> None:
+        self._weights = dict(_WEIGHTS)
+        if profile is not None:
+            self._weights = dict(profile.weights)
+
     def score(self, grant: Grant) -> float:
         """Return relevance score in [0.0, 1.0]."""
         searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
@@ -131,10 +150,10 @@ class RelevanceScorer:
         amt_s = _amount_bonus(grant)
 
         score = (
-            _WEIGHTS["amr"] * amr_s
-            + _WEIGHTS["ai"] * ai_s
-            + _WEIGHTS["drug"] * drug_s
-            + _WEIGHTS["amount"] * amt_s
+            self._weights["amr"] * amr_s
+            + self._weights["ai"] * ai_s
+            + self._weights["drug"] * drug_s
+            + self._weights["amount"] * amt_s
         )
 
         return round(min(score, 1.0), 4)
