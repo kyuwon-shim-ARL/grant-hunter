@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/home/kyuwon/projects/grant_hunter"
-LOG_DIR="${PROJECT_DIR}/logs"
+LOG_DIR="${HOME}/.grant-hunter/logs"
 DATE=$(date +%Y%m%d)
 
 mkdir -p "${LOG_DIR}"
@@ -22,5 +22,12 @@ EXIT_CODE=${PIPESTATUS[0]}
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Pipeline finished with exit code ${EXIT_CODE}" \
   | tee -a "${LOG_DIR}/pipeline_${DATE}.log"
+
+if [ ${EXIT_CODE} -ne 0 ]; then
+  send-email "kyuwon.song@ip-korea.org" \
+    "[Grant Hunter] Pipeline FAILED (exit code ${EXIT_CODE})" \
+    "Pipeline failed at $(date -u +%Y-%m-%dT%H:%M:%SZ). Check log: ${LOG_DIR}/pipeline_${DATE}.log" \
+    2>/dev/null || true
+fi
 
 exit ${EXIT_CODE}

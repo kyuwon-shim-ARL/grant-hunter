@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -36,11 +38,28 @@ class BaseCollector(ABC):
 
     def save_snapshot(self, grants: List[Grant], path: Optional[Path] = None) -> Path:
         target = path or self.snapshot_path()
-        data = [g.to_dict() for g in grants]
-        with open(target, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, ensure_ascii=False, indent=2, cls=GrantEncoder)
+        fd, tmp_path = tempfile.mkstemp(dir=str(target.parent), suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+                json.dump([g.to_dict() for g in grants], fh, cls=GrantEncoder, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, str(target))
+        except:
+            os.unlink(tmp_path)
+            raise
         logger.info("[%s] Saved %d grants to %s", self.name, len(grants), target)
+        self._rotate_snapshots()
         return target
+
+    def _rotate_snapshots(self, keep: int = 7) -> None:
+        """Remove old snapshots, keeping the most recent `keep` files."""
+        pattern = f"{self.name}_*.json"
+        snapshots = sorted(
+            SNAPSHOTS_DIR.glob(pattern),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for old in snapshots[keep:]:
+            old.unlink(missing_ok=True)
 
     def load_previous_snapshot(self, path: Optional[Path] = None) -> List[Grant]:
         """Load the most recent snapshot that is NOT today's file."""
