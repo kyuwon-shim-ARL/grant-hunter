@@ -69,11 +69,13 @@ def _count_hits(text: str, keywords: List[str]) -> Tuple[int, List[str]]:
     return len(matched), matched
 
 
-def passes_keyword_gate(grant: Grant) -> bool:
-    """Check if grant passes the AMR AND AI keyword threshold.
+def passes_keyword_gate(grant: Grant) -> str:
+    """Check grant against AMR/AI keyword thresholds.
 
-    Requires at least 1 core AMR keyword OR 2+ broad AMR keywords,
-    AND at least 1 AI keyword.
+    Returns:
+        "tier1" - AMR AND AI (both present)
+        "tier2" - AMR-only (core AMR keyword, no AI)
+        "skip"  - neither criterion met
     """
     searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
     amr_hits, _ = _count_hits(searchable, AMR_KEYWORDS)
@@ -82,30 +84,42 @@ def passes_keyword_gate(grant: Grant) -> bool:
 
     amr_pass = amr_core_hits >= MIN_AMR_HITS or amr_hits >= 2
     ai_pass = ai_hits >= MIN_AI_HITS
-    return amr_pass and ai_pass
+
+    if amr_pass and ai_pass:
+        return "tier1"
+    if amr_pass:
+        return "tier2"
+    return "skip"
 
 
 def filter_grants(grants: List[Grant]) -> List[Grant]:
-    """Return only grants that pass AMR+AI keyword filter, scored by RelevanceScorer.
+    """Return grants that pass keyword filter, with two tiers.
 
-    Uses the unified RelevanceScorer (0.0–1.0 normalized) for scoring.
-    Gate: grant must contain at least MIN_AMR_HITS AMR keywords AND
-    MIN_AI_HITS AI keywords.
+    Tier 1: AMR AND AI keywords present (full relevance score).
+    Tier 2: AMR-only (score penalized by 0.5x to rank below Tier 1).
     """
     result: List[Grant] = []
+    tier1_count = 0
+    tier2_count = 0
     for grant in grants:
-        if not passes_keyword_gate(grant):
+        tier = passes_keyword_gate(grant)
+        if tier == "skip":
             continue
         grant.relevance_score = _scorer.score(grant)
+        if tier == "tier2":
+            grant.relevance_score *= 0.5
+            tier2_count += 1
+        else:
+            tier1_count += 1
         result.append(grant)
 
     result.sort(key=lambda g: g.relevance_score, reverse=True)
     logger.info(
-        "Filter: %d/%d grants passed (AMR>=%d AND AI>=%d)",
+        "Filter: %d/%d grants passed (tier1=%d AMR+AI, tier2=%d AMR-only)",
         len(result),
         len(grants),
-        MIN_AMR_HITS,
-        MIN_AI_HITS,
+        tier1_count,
+        tier2_count,
     )
     return result
 

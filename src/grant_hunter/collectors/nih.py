@@ -28,9 +28,15 @@ NIH_SEARCH_TERMS = [
     "antimicrobial resistance",
     "antibiotic resistance",
     "drug-resistant bacteria",
+    "ESKAPE pathogen",
+    "carbapenem resistant",
+    "multidrug resistant infection",
+    "antimicrobial stewardship",
+    "novel antibiotic",
     "machine learning antibiotic",
     "artificial intelligence AMR",
     "deep learning antimicrobial",
+    "computational drug discovery antibiotic",
 ]
 
 

@@ -88,9 +88,9 @@ def test_filter_grants_score_matches_scorer(scorer):
 
 
 def test_passes_keyword_gate_requires_amr_and_ai(amr_ai_grant, amr_only_grant):
-    """Keyword gate requires both AMR and AI keywords."""
-    assert passes_keyword_gate(amr_ai_grant) is True
-    assert passes_keyword_gate(amr_only_grant) is False
+    """Keyword gate: AMR+AI → tier1, AMR-only → tier2."""
+    assert passes_keyword_gate(amr_ai_grant) == "tier1"
+    assert passes_keyword_gate(amr_only_grant) == "tier2"
 
 
 def test_filtered_grants_sorted_by_score_descending():

@@ -171,7 +171,7 @@ def test_nonprofit_positive_eligible(engine):
     grant = make_grant(
         id="NP-001",
         title="Non-profit Research Grant",
-        source="gates_gc",
+        source="nih",
         description="Open to non-profit and research institute applicants worldwide.",
     )
     result = engine.check(grant)

@@ -51,7 +51,7 @@ _FUNDING_PATTERNS: list[tuple[str, list[str]]] = [
     ]),
 ]
 
-_CHALLENGE_SOURCES = {"carb_x", "gates_gc", "google_org"}
+_CHALLENGE_KEYWORDS = ["challenge", "prize", "competition", "award"]
 
 
 def _search_text(patterns: list[str], text: str) -> bool:
@@ -76,7 +76,7 @@ class GrantClassifier:
                 break
 
         # --- Axis 2: Funding Type ---
-        if grant.source in _CHALLENGE_SOURCES:
+        if _search_text(_CHALLENGE_KEYWORDS, text):
             funding_type = "challenge"
         else:
             funding_type = "project_grant"

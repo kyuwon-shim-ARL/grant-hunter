@@ -29,21 +29,13 @@ def test_run_pipeline_completes_without_exception(mock_post, mock_get):
     })
     mock_post.return_value = nih_response
 
-    # EU CORDIS GET and scraper GETs return empty
+    # EU CORDIS GET returns empty
     eu_response = _make_mock_response({
         "payload": {"results": [], "total": 0},
     })
-    # Scraper-based collectors (carb_x, right_foundation, gates_gc, pasteur_network, google_org)
-    # return minimal HTML with no matching sections
-    scraper_response = MagicMock()
-    scraper_response.status_code = 200
-    scraper_response.text = "<html><body><p>No content</p></body></html>"
-    scraper_response.raise_for_status.return_value = None
 
     def get_side_effect(url, **kwargs):
-        if "cordis" in url:
-            return eu_response
-        return scraper_response
+        return eu_response
 
     def post_side_effect(url, **kwargs):
         if "grants.gov" in url:

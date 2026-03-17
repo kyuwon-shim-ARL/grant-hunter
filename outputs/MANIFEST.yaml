@@ -232,3 +232,30 @@ experiments:
     milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
     hypothesis: "로테이션(7일) + 실패 이메일 + atomic write로 30일 무인 운영 가능"
     result: "tmpfile+os.replace atomic write. 7일 rotation. 실패 시 send-email. 로그 ~/.grant-hunter/logs/ 통합. 5 tests pass."
+  e028:
+    title: "AMP false positive 수정 + dead scraper 제거"
+    status: validated
+    issue: 28
+    created: "2026-03-17"
+    depends_on: [e025]
+    milestone: "v2.2 - 데이터 품질 정밀화"
+    hypothesis: "AMP 3글자 약어 제거 + 5개 dead scraper 삭제로 false positive 감소, 파이프라인 안정성 향상"
+    result: "AMP 키워드 삭제(antimicrobial peptide 유지). carb_x/right_foundation/gates_gc/pasteur_network/google_org 5개 collector 삭제. classifier challenge 감지 keyword 기반 전환."
+  e029:
+    title: "NIH 검색어 AMR 특화 정밀화"
+    status: validated
+    issue: 29
+    created: "2026-03-17"
+    depends_on: [e017]
+    milestone: "v2.2 - 데이터 품질 정밀화"
+    hypothesis: "AMR 특화 검색어 확장(6→12개)으로 NIH FOA 수집 recall 향상"
+    result: "ESKAPE pathogen, carbapenem resistant, multidrug resistant infection, antimicrobial stewardship, novel antibiotic, computational drug discovery antibiotic 6개 추가."
+  e030:
+    title: "필터 완화 - AMR-OR-AI 2티어 시스템"
+    status: validated
+    issue: 30
+    created: "2026-03-17"
+    depends_on: [e025, e014]
+    milestone: "v2.2 - 데이터 품질 정밀화"
+    hypothesis: "AMR-only tier2 추가로 필터 통과 grant 수 3배 이상 증가, AMR+AI tier1은 상위 유지"
+    result: "passes_keyword_gate() tier1/tier2/skip 반환. tier2(AMR-only) score×0.5 페널티. 107 tests pass."

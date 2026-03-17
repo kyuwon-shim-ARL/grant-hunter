@@ -13,11 +13,6 @@ from typing import Dict, List, Tuple
 from grant_hunter.collectors.nih import NIHCollector
 from grant_hunter.collectors.eu_portal import EUPortalCollector
 from grant_hunter.collectors.grants_gov import GrantsGovCollector
-from grant_hunter.collectors.carb_x import CarbXCollector
-from grant_hunter.collectors.right_foundation import RightFoundationCollector
-from grant_hunter.collectors.gates_gc import GatesGCCollector
-from grant_hunter.collectors.pasteur_network import PasteurNetworkCollector
-from grant_hunter.collectors.google_org import GoogleOrgCollector
 from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.eligibility import EligibilityEngine
 from grant_hunter.filters import filter_grants, diff_grants
@@ -152,11 +147,6 @@ def run_pipeline() -> dict:
         NIHCollector(),
         EUPortalCollector(),
         GrantsGovCollector(),
-        CarbXCollector(),
-        RightFoundationCollector(),
-        GatesGCCollector(),
-        PasteurNetworkCollector(),
-        GoogleOrgCollector(),
     ]
 
     all_current: List[Grant] = []

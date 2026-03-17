@@ -92,12 +92,12 @@ def test_funding_type_fellowship_for_fellowship_in_title(classifier):
     assert result.funding_type == "fellowship"
 
 
-def test_funding_type_challenge_for_carbx_source(classifier):
+def test_funding_type_challenge_for_challenge_title(classifier):
     grant = make_grant(
         id="FUND-003",
-        title="CARB-X Product Development Award",
-        source="carb_x",
-        description="Funding for early-stage antibacterial product development.",
+        title="Grand Challenge for AMR Diagnostics",
+        source="nih",
+        description="Challenge grant for early-stage antibacterial product development.",
     )
     result = classifier.classify(grant)
     assert result.funding_type == "challenge"
