@@ -336,13 +336,26 @@ def run_pipeline() -> dict:
 
 
 def _dedup(grants: List[Grant]) -> List[Grant]:
-    """Remove duplicates by fingerprint; for cross-source keep all."""
-    seen: dict = {}
+    """Remove duplicates by fingerprint; cross-source dedup by normalized title."""
+    seen_fp: dict = {}
+    seen_title: dict = {}
     for g in grants:
         fp = g.fingerprint()
-        if fp not in seen:
-            seen[fp] = g
-    return list(seen.values())
+        if fp in seen_fp:
+            continue
+        seen_fp[fp] = g
+        # Cross-source: keep the one with longer description
+        title_key = g.cross_fingerprint()
+        if title_key in seen_title:
+            existing = seen_title[title_key]
+            if len(g.description or "") > len(existing.description or ""):
+                # Replace with richer version
+                del seen_fp[existing.fingerprint()]
+                seen_fp[fp] = g
+                seen_title[title_key] = g
+        else:
+            seen_title[title_key] = g
+    return list(seen_fp.values())
 
 
 if __name__ == "__main__":

@@ -163,6 +163,30 @@ def test_urgency_rolling_when_no_deadline(classifier):
     assert result.urgency == "rolling"
 
 
+def test_expired_urgency(classifier):
+    today = date(2026, 3, 17)
+    grant = make_grant(
+        id="URG-005",
+        title="Expired deadline grant",
+        source="nih",
+        deadline=today - timedelta(days=10),
+    )
+    result = classifier.classify(grant, today=today)
+    assert result.urgency == "expired"
+
+
+def test_expired_not_urgent(classifier):
+    today = date(2026, 3, 17)
+    grant = make_grant(
+        id="URG-006",
+        title="Past deadline grant",
+        source="nih",
+        deadline=today - timedelta(days=1),
+    )
+    result = classifier.classify(grant, today=today)
+    assert result.urgency != "urgent"
+
+
 # ── PRIORITY TIER ─────────────────────────────────────────────────────────────
 # The classifier reads eligibility_status via getattr(grant, "eligibility_status", "uncertain").
 # Grant is a dataclass without that field, so we attach it as an instance attribute.

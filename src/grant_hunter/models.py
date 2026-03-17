@@ -46,6 +46,13 @@ class Grant:
         """Stable key for deduplication."""
         return f"{self.source}::{self.id}"
 
+    def cross_fingerprint(self) -> str:
+        """Normalized title key for cross-source deduplication."""
+        import re
+        title_norm = re.sub(r'[^a-z0-9 ]', '', self.title.lower()).strip()
+        # Use first 80 chars to avoid minor suffix differences
+        return title_norm[:80]
+
 
 class GrantEncoder(json.JSONEncoder):
     def default(self, obj):

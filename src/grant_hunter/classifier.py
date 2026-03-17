@@ -14,7 +14,7 @@ from grant_hunter.models import Grant
 class GrantClassification:
     research_stage: str  # basic | translational | clinical | infrastructure | unclassified
     funding_type: str    # project_grant | fellowship | consortium | challenge | institutional
-    urgency: str         # urgent | upcoming | open | rolling
+    urgency: str         # urgent | upcoming | open | rolling | expired
     tier: str            # tier1 | tier2 | tier3 | tier4
     tier_label: str      # "Must Apply" | "Strong Fit" | "Worth Monitoring" | "Low Priority"
 
@@ -90,7 +90,9 @@ class GrantClassifier:
             urgency = "rolling"
         else:
             days = (grant.deadline - today).days
-            if days <= 30:
+            if days < 0:
+                urgency = "expired"
+            elif days <= 30:
                 urgency = "urgent"
             elif days <= 90:
                 urgency = "upcoming"

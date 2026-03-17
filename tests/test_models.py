@@ -26,6 +26,18 @@ def test_two_different_grants_different_fingerprints():
     assert g1.fingerprint() != g2.fingerprint()
 
 
+def test_cross_fingerprint_same_title_different_sources():
+    g1 = make_grant(id="CF-001", source="nih", title="AMR Research Grant 2026")
+    g2 = make_grant(id="CF-001", source="eu", title="AMR Research Grant 2026")
+    assert g1.cross_fingerprint() == g2.cross_fingerprint()
+
+
+def test_cross_fingerprint_different_titles():
+    g1 = make_grant(id="CF-002", source="nih", title="AMR Research Grant 2026")
+    g2 = make_grant(id="CF-003", source="nih", title="Antibiotic Discovery Programme")
+    assert g1.cross_fingerprint() != g2.cross_fingerprint()
+
+
 def test_grant_serialization_deserialization():
     original = make_grant(
         id="SER-001",
