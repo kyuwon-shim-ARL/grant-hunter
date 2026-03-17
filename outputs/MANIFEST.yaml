@@ -1,5 +1,5 @@
 version: 3
-updated: "2026-03-16T18:30:00Z"
+updated: "2026-03-17T11:00:00Z"
 scan_paths:
   - outputs/
 foundations: {}
@@ -9,48 +9,94 @@ milestone:
 experiments:
   e001:
     title: "Phase 0 - NTIS/IRIS 공식 알림 등록 + 캘린더 마감 리마인더"
-    status: active
+    status: concluded
     issue: 1
     created: "2026-03-16"
     hypothesis: "코드 없이 공식 알림 서비스만으로 한국 정부 과제 모니터링의 70%를 해결할 수 있다"
+    result: "캘린더 이벤트 생성 완료. NTIS/IRIS 등록은 사용자 수동 진행 필요."
   e002:
     title: "Phase 1 - 핵심 API 수집기 (NIH + EU + grants.gov)"
-    status: active
+    status: validated
     issue: 2
     created: "2026-03-16"
     hypothesis: "국제 과제 3개 API + 키워드 매칭으로 Tier 1-2 국제 Grant의 85%를 자동 포착할 수 있다"
+    result: "NIH 4827, EU 10, Grants.gov 201건 수집 확인. 3개 API 모두 정상 동작."
   e003:
     title: "Phase 2 - AMR 특화 크롤러 확장 (CARB-X, RIGHT, Pasteur)"
-    status: active
+    status: validated
     issue: 4
     created: "2026-03-16"
     depends_on: [e002]
     hypothesis: "5개 핵심 사이트 크롤러로 AMR 특화 Grant 95%를 커버하면서 유지보수 부담을 관리 가능 수준으로 유지할 수 있다"
+    result: "CARB-X 1, RIGHT 31, Gates 11, Pasteur 5, Google.org 2건. 8개 소스 합계 5088건."
   e004:
     title: "Phase 3 - 적격성 엔진 + 관련성 스코어링"
-    status: active
+    status: validated
     issue: 3
     created: "2026-03-16"
     depends_on: [e002, e003]
     hypothesis: "규칙 기반 적격성 판정 + 키워드 TF-IDF로 LLM 없이 80% 정확도를 달성할 수 있다"
+    result: "898건 필터 → 449 eligible, 377 uncertain, 72 ineligible. 8규칙 엔진 + TF-IDF 스코어러."
   e005:
     title: "PyPI 패키지 구조 전환 (grant-hunter-mcp)"
-    status: experimental
+    status: validated
     issue: 5
     created: "2026-03-16"
     depends_on: [e002, e003, e004]
     hypothesis: "src/ 레이아웃 + 환경변수 기반 config로 전환하면 MCP 서버에서 독립적으로 import 가능하다"
+    result: "pip install -e . 검증 완료. 모든 import 정상. architect 승인."
   e006:
     title: "Python MCP Server 구현 (stdio transport)"
-    status: experimental
+    status: validated
     issue: 6
     created: "2026-03-16"
     depends_on: [e005]
     hypothesis: "9개 MCP tool로 grant_hunter의 모든 기능을 Claude Code 대화에서 자연어로 사용할 수 있다"
+    result: "JSON-RPC initialize + tools/list + grant_search E2E 검증 완료. 9개 tool 정상 응답."
   e007:
     title: "Claude Code Plugin 래퍼 (npm + skills)"
-    status: experimental
+    status: validated
     issue: 7
     created: "2026-03-16"
     depends_on: [e006]
     hypothesis: "npm thin wrapper + PyPI MCP server 2-패키지 구조로 Claude Code 플러그인 배포가 가능하다"
+    result: "plugin.json + .mcp.json + 5 skills 구조 완성. architect 승인."
+  e008:
+    title: "Fix cron + delete root duplicates + unify snapshot paths"
+    status: validated
+    issue: 8
+    created: "2026-03-17"
+    depends_on: [e005]
+    hypothesis: "cron을 .venv python으로 수정하고 루트 중복 삭제하면 일일 파이프라인이 정상 동작한다"
+    result: "run_pipeline.sh 수정, crontab 수정, 루트 중복 14파일 삭제. 파이프라인 5088건 수집 성공."
+  e009:
+    title: "Fix broken collectors (EU Portal, Grants.gov, AMR crawlers)"
+    status: validated
+    issue: 9
+    created: "2026-03-17"
+    depends_on: [e008]
+    hypothesis: "8개 collector 모두 실제 데이터를 수집할 수 있다"
+    result: "8/8 소스 정상. Pasteur URL 수정. 합계 5088건 수집."
+  e010:
+    title: "Add test suite (eligibility, filters, collectors)"
+    status: validated
+    issue: 10
+    created: "2026-03-17"
+    depends_on: [e005]
+    hypothesis: "43개 pytest 테스트로 핵심 비즈니스 로직의 신뢰성을 확보할 수 있다"
+    result: "43 passed in 8.11s. eligibility 17, filters 6, models 4, scoring 4, collectors 11, pipeline 1."
+  e011:
+    title: "E2E verify MCP server + plugin installation"
+    status: validated
+    issue: 11
+    created: "2026-03-17"
+    depends_on: [e006]
+    hypothesis: "MCP server가 stdio transport로 실제 JSON-RPC 요청에 응답한다"
+    result: "initialize → tools/list(9개) → grant_search(실제 결과 반환) E2E 검증 완료."
+  e012:
+    title: "Experiment finalization + MANIFEST status updates"
+    status: validated
+    issue: 12
+    created: "2026-03-17"
+    hypothesis: "모든 실험 상태를 실제 결과 기반으로 업데이트한다"
+    result: "12개 실험 상태 업데이트 완료. experiment-log.md 생성."

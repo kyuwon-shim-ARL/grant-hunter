@@ -9,7 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEEKLY_REMINDER="${SCRIPT_DIR}/weekly_reminder.py"
-PYTHON_BIN="$(which python3)"
+PYTHON_BIN="/home/kyuwon/.venv/bin/python"
 LOG_FILE="${SCRIPT_DIR}/../outputs/cron_weekly_reminder.log"
 CRON_MARKER="grant_hunter_weekly_reminder"
 

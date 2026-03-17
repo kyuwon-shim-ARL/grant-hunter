@@ -19,9 +19,8 @@ from grant_hunter.models import Grant
 logger = logging.getLogger(__name__)
 
 PASTEUR_URLS = [
-    "https://pasteur-network.org/funding/",
-    "https://pasteur-network.org/calls/",
     "https://www.pasteur.fr/en/international/international-calls/incentive-programs",
+    "https://pasteur-network.org/",
 ]
 
 HEADERS = {

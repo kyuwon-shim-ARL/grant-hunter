@@ -16,7 +16,7 @@ cd "${PROJECT_DIR}"
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting grant_hunter pipeline" \
   | tee -a "${LOG_DIR}/pipeline_${DATE}.log"
 
-python3 -m pipeline 2>&1 | tee -a "${LOG_DIR}/pipeline_${DATE}.log"
+/home/kyuwon/.venv/bin/python -m grant_hunter.pipeline 2>&1 | tee -a "${LOG_DIR}/pipeline_${DATE}.log"
 
 EXIT_CODE=${PIPESTATUS[0]}
 
