@@ -10,8 +10,11 @@ from typing import List, Tuple
 
 from grant_hunter.config import KEYWORDS_FILE, MIN_AMR_HITS, MIN_AI_HITS
 from grant_hunter.models import Grant
+from grant_hunter.scoring import RelevanceScorer
 
 logger = logging.getLogger(__name__)
+
+_scorer = RelevanceScorer()
 
 
 def _load_keywords() -> dict:
@@ -48,44 +51,29 @@ def _count_hits(text: str, keywords: List[str]) -> Tuple[int, List[str]]:
     return len(matched), matched
 
 
-def score_grant(grant: Grant) -> float:
-    """Compute relevance score; returns 0.0 if below threshold."""
+def passes_keyword_gate(grant: Grant) -> bool:
+    """Check if grant passes the AMR AND AI keyword threshold."""
     searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
-
-    amr_hits, amr_matched = _count_hits(searchable, AMR_KEYWORDS)
-    ai_hits, ai_matched = _count_hits(searchable, AI_KEYWORDS)
-    drug_hits, _ = _count_hits(searchable, DRUG_KEYWORDS)
-
-    # Must pass minimum threshold
-    if amr_hits < MIN_AMR_HITS or ai_hits < MIN_AI_HITS:
-        return 0.0
-
-    # Weighted score: AMR=3, AI=2, drug=1
-    score = amr_hits * 3.0 + ai_hits * 2.0 + drug_hits * 1.0
-
-    logger.debug(
-        "PASS '%s' score=%.1f amr=%d(%s) ai=%d(%s)",
-        grant.title[:60],
-        score,
-        amr_hits,
-        amr_matched[:3],
-        ai_hits,
-        ai_matched[:3],
-    )
-    return score
+    amr_hits, _ = _count_hits(searchable, AMR_KEYWORDS)
+    ai_hits, _ = _count_hits(searchable, AI_KEYWORDS)
+    return amr_hits >= MIN_AMR_HITS and ai_hits >= MIN_AI_HITS
 
 
 def filter_grants(grants: List[Grant]) -> List[Grant]:
-    """Return only grants that pass AMR+AI keyword filter, sorted by relevance."""
-    scored: List[Tuple[float, Grant]] = []
-    for grant in grants:
-        s = score_grant(grant)
-        if s > 0:
-            grant.relevance_score = s
-            scored.append((s, grant))
+    """Return only grants that pass AMR+AI keyword filter, scored by RelevanceScorer.
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    result = [g for _, g in scored]
+    Uses the unified RelevanceScorer (0.0–1.0 normalized) for scoring.
+    Gate: grant must contain at least MIN_AMR_HITS AMR keywords AND
+    MIN_AI_HITS AI keywords.
+    """
+    result: List[Grant] = []
+    for grant in grants:
+        if not passes_keyword_gate(grant):
+            continue
+        grant.relevance_score = _scorer.score(grant)
+        result.append(grant)
+
+    result.sort(key=lambda g: g.relevance_score, reverse=True)
     logger.info(
         "Filter: %d/%d grants passed (AMR>=%d AND AI>=%d)",
         len(result),

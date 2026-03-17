@@ -22,7 +22,6 @@ from grant_hunter.eligibility import EligibilityEngine
 from grant_hunter.filters import filter_grants, diff_grants
 from grant_hunter.models import Grant
 from grant_hunter.report_generator import generate_html_report
-from grant_hunter.scoring import RelevanceScorer
 from grant_hunter.dashboard import generate_dashboard
 from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR
 
@@ -162,9 +161,8 @@ def run_pipeline() -> dict:
         src_grants = [g for g in filtered if g.source == src_name]
         stats[src_name]["filtered"] = len(src_grants)
 
-    # ── 4. Eligibility + relevance scoring ───────────────────────────────────
+    # ── 4. Eligibility (scoring already done by filter_grants) ──────────────
     elig_engine = EligibilityEngine()
-    scorer = RelevanceScorer()
 
     eligibility_map: dict = {}
     eligibility_reason_map: dict = {}
@@ -176,8 +174,7 @@ def run_pipeline() -> dict:
         result = elig_engine.check(g)
         eligibility_map[fp] = result.status
         eligibility_reason_map[fp] = result.reason
-        norm_score = scorer.score(g)
-        score_map[fp] = norm_score
+        score_map[fp] = g.relevance_score  # already set by filter_grants
         if result.status == "eligible":
             eligible_count += 1
         elif result.status == "uncertain":

@@ -100,3 +100,31 @@ experiments:
     created: "2026-03-17"
     hypothesis: "모든 실험 상태를 실제 결과 기반으로 업데이트한다"
     result: "12개 실험 상태 업데이트 완료. experiment-log.md 생성."
+  e013:
+    title: "Score Pipeline Bug Fix + 듀얼 스코어링 통합"
+    status: experimental
+    issue: 13
+    created: "2026-03-17"
+    depends_on: [e004]
+    hypothesis: "스냅샷 저장 후 스코어링 결과를 persist하고 듀얼 스코어링을 단일 시스템으로 통합하면, 인터랙티브 리포트에서 실제 relevance score가 표시된다"
+  e014:
+    title: "스코어링 알고리즘 재설계 (변별력 확보)"
+    status: experimental
+    issue: 14
+    created: "2026-03-17"
+    depends_on: [e013]
+    hypothesis: "키워드 확장(42→150+) + AI FP 해결 + amount_bonus 조건부 + 가중치 재조정으로 점수 분포 표준편차를 0.15 이상으로 확대하고, 상위/하위 50건 점수 차이 0.4 이상을 달성한다"
+  e015:
+    title: "연구자 프로필 기반 개인화 시스템"
+    status: experimental
+    issue: 15
+    created: "2026-03-17"
+    depends_on: [e013]
+    hypothesis: "연구자 프로필 프리셋 4종으로 동일 grant pool에서 프로필별 Top-20의 Jaccard distance가 0.5 이상이 된다"
+  e016:
+    title: "MECE 계층 분류 + 인터랙티브 리포트 재설계"
+    status: experimental
+    issue: 16
+    created: "2026-03-17"
+    depends_on: [e014, e015]
+    hypothesis: "3축 분류 + 우선순위 티어링으로 미분류 비율 5% 미만, 각 티어별 분포가 Tier1<Tier2<Tier3<Tier4를 달성한다"

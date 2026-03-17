@@ -101,7 +101,7 @@ def _grant_row(g: Grant, tag: str = "") -> str:
     tag_html = f'<span class="tag tag-{tag}">{tag.upper()}</span>' if tag else ""
     amount = _fmt_amount(g.amount_max or g.amount_min)
     deadline_str = _fmt_deadline(g.deadline)
-    score_str = f"{g.relevance_score:.0f}"
+    score_str = f"{g.relevance_score * 100:.0f}%"
     title_escaped = html.escape(g.title or "")
     url_escaped = html.escape(g.url or "#")
     agency_escaped = html.escape(g.agency or "")
