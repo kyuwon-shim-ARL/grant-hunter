@@ -40,11 +40,6 @@ _SOURCE_MAP = {
     "nih": "grant_hunter.collectors.nih.NIHCollector",
     "eu": "grant_hunter.collectors.eu_portal.EUPortalCollector",
     "grants_gov": "grant_hunter.collectors.grants_gov.GrantsGovCollector",
-    "carb_x": "grant_hunter.collectors.carb_x.CarbXCollector",
-    "right_foundation": "grant_hunter.collectors.right_foundation.RightFoundationCollector",
-    "gates_gc": "grant_hunter.collectors.gates_gc.GatesGCCollector",
-    "pasteur_network": "grant_hunter.collectors.pasteur_network.PasteurNetworkCollector",
-    "google_org": "grant_hunter.collectors.google_org.GoogleOrgCollector",
 }
 
 ALL_SOURCES = list(_SOURCE_MAP.keys())

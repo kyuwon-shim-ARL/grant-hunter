@@ -93,8 +93,10 @@ _NIH_FOREIGN_ELIGIBLE_IDS = {
     "u01", "u54", "u19", "ub1",
     "p01", "p50",
     "rm1",
-    "par", "rfa",  # Programme announcements generally allow foreign
 }
+
+# PAR/RFA prefixes matched separately with dash anchor to avoid substring FPs
+_NIH_FOREIGN_ELIGIBLE_PREFIXES = ("par-", "rfa-")
 
 # Rule 4 – Non-profit / research institute positive signals
 _NONPROFIT_POSITIVE = [
@@ -165,10 +167,17 @@ class EligibilityEngine:
         is_nih_foreign_eligible = False
         if source == "nih":
             grant_id_l = grant.id.lower()
+            # Check mechanism codes (substring match OK for short codes like r01)
             for mech in _NIH_FOREIGN_ELIGIBLE_IDS:
                 if mech in grant_id_l or mech in title_l:
                     is_nih_foreign_eligible = True
                     break
+            # Check PAR/RFA prefixes with dash anchor to avoid substring FPs
+            if not is_nih_foreign_eligible:
+                for prefix in _NIH_FOREIGN_ELIGIBLE_PREFIXES:
+                    if grant_id_l.startswith(prefix) or f" {prefix}" in f" {title_l}":
+                        is_nih_foreign_eligible = True
+                        break
 
         if not is_nih_foreign_eligible:
             hits = _contains_any(text, _US_ONLY)

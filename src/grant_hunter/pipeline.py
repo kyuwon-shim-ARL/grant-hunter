@@ -340,7 +340,9 @@ def _dedup(grants: List[Grant]) -> List[Grant]:
             existing = seen_title[title_key]
             if len(g.description or "") > len(existing.description or ""):
                 # Replace with richer version
-                del seen_fp[existing.fingerprint()]
+                existing_fp = existing.fingerprint()
+                if existing_fp in seen_fp:
+                    del seen_fp[existing_fp]
                 seen_fp[fp] = g
                 seen_title[title_key] = g
         else:
