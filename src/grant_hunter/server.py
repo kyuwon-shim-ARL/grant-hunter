@@ -256,8 +256,21 @@ async def list_tools() -> list[types.Tool]:
                         "type": "boolean",
                         "description": "If true, return only IPK-eligible grants.",
                     },
+                    "profile": {
+                        "type": "string",
+                        "description": "Researcher profile name for scoring (default: 'default'). Use grant_list_profiles to see available profiles.",
+                        "default": "default",
+                    },
                 },
                 "required": ["query"],
+            },
+        ),
+        types.Tool(
+            name="grant_list_profiles",
+            description="List available researcher profiles for grant scoring.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
             },
         ),
         types.Tool(
@@ -353,6 +366,8 @@ async def _dispatch(name: str, args: dict[str, Any]) -> Any:
         return _tool_grant_config_set(args)
     elif name == "grant_config_get":
         return _tool_grant_config_get(args)
+    elif name == "grant_list_profiles":
+        return _tool_grant_list_profiles(args)
     else:
         return {"error": f"Unknown tool: {name}"}
 
@@ -416,6 +431,7 @@ def _tool_grant_search(args: dict) -> list:
     source_filter = args.get("source")
     min_score = args.get("min_score")
     eligible_only = args.get("eligible_only", False)
+    profile_name = args.get("profile", "default")
 
     grants = _load_latest_snapshots()
     if not grants:
@@ -441,9 +457,11 @@ def _tool_grant_search(args: dict) -> list:
         engine = EligibilityEngine()
         results = [g for g in results if engine.check(g).status == "eligible"]
 
-    # Score and sort
+    # Score and sort using specified profile
     from grant_hunter.scoring import RelevanceScorer
-    scorer = RelevanceScorer()
+    from grant_hunter.profiles import get_profile
+    profile = get_profile(profile_name)
+    scorer = RelevanceScorer(profile=profile)
     scored = sorted(results, key=lambda g: scorer.score(g), reverse=True)[:20]
 
     return [
@@ -455,9 +473,16 @@ def _tool_grant_search(args: dict) -> list:
             "deadline": g.deadline.isoformat() if g.deadline else None,
             "score": round(scorer.score(g), 3),
             "url": g.url,
+            "profile": profile_name,
         }
         for g in scored
     ]
+
+
+def _tool_grant_list_profiles(args: dict) -> dict:
+    from grant_hunter.profiles import list_profiles
+    profiles = list_profiles()
+    return {"profiles": profiles}
 
 
 def _tool_grant_deadlines(args: dict) -> list:

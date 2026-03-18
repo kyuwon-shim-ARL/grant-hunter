@@ -72,6 +72,8 @@ def generate_html_report(
     all_filtered: List[Grant],
     stats: dict,
     run_date: Optional[datetime] = None,
+    eligibility_map: Optional[dict] = None,
+    eligibility_reason_map: Optional[dict] = None,
 ) -> Path:
     """Generate HTML report and return its path."""
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -87,7 +89,7 @@ def generate_html_report(
         key=lambda g: g.deadline or date.max,
     )
 
-    html_content = _build_html(highlights, all_filtered, stats, run_dt, new_fps)
+    html_content = _build_html(highlights, all_filtered, stats, run_dt, new_fps, eligibility_map, eligibility_reason_map)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(html_content)
 
@@ -95,7 +97,14 @@ def generate_html_report(
     return path
 
 
-def _grant_row(g: Grant, tag: str = "") -> str:
+_ELIG_COLORS = {
+    "eligible": "#2e7d32",
+    "uncertain": "#e65100",
+    "ineligible": "#c62828",
+}
+
+
+def _grant_row(g: Grant, tag: str = "", eligibility: str = "", reason: str = "") -> str:
     dl_class = _deadline_class(g.deadline)
     badge = _source_badge(g.source)
     tag_html = f'<span class="tag tag-{tag}">{tag.upper()}</span>' if tag else ""
@@ -107,6 +116,13 @@ def _grant_row(g: Grant, tag: str = "") -> str:
     agency_escaped = html.escape(g.agency or "")
     desc_escaped = html.escape((g.description or "")[:300]).replace("\n", " ")
 
+    if eligibility:
+        color = _ELIG_COLORS.get(eligibility, "#888")
+        reason_escaped = html.escape(reason or "")
+        elig_html = f'<span style="color:{color};font-weight:bold" title="{reason_escaped}">{eligibility}</span>'
+    else:
+        elig_html = '<span style="color:#aaa">—</span>'
+
     return f"""
     <tr class="{dl_class}">
       <td>{tag_html}{badge}</td>
@@ -116,6 +132,7 @@ def _grant_row(g: Grant, tag: str = "") -> str:
       <td class="deadline">{deadline_str}</td>
       <td>{amount}</td>
       <td class="score">{score_str}</td>
+      <td>{elig_html}</td>
     </tr>"""
 
 
@@ -125,17 +142,25 @@ def _build_html(
     stats: dict,
     run_dt: datetime,
     new_fps: Optional[set] = None,
+    eligibility_map: Optional[dict] = None,
+    eligibility_reason_map: Optional[dict] = None,
 ) -> str:
     run_str = run_dt.strftime("%Y-%m-%d %H:%M UTC")
 
     highlight_rows = ""
     for g in highlights:
         tag = "new" if (new_fps and g.fingerprint() in new_fps) else "changed"
-        highlight_rows += _grant_row(g, tag)
+        fp = g.fingerprint()
+        elig = (eligibility_map or {}).get(fp, "")
+        reason = (eligibility_reason_map or {}).get(fp, "")
+        highlight_rows += _grant_row(g, tag, elig, reason)
 
     all_rows = ""
     for g in sorted(all_filtered, key=lambda x: x.deadline or date.max):
-        all_rows += _grant_row(g)
+        fp = g.fingerprint()
+        elig = (eligibility_map or {}).get(fp, "")
+        reason = (eligibility_reason_map or {}).get(fp, "")
+        all_rows += _grant_row(g, "", elig, reason)
 
     # Stats summary
     stat_items = ""
@@ -202,11 +227,11 @@ def _build_html(
   {errors_html}
 </div>
 
-{"<h2>New &amp; Changed Grants</h2><table><thead><tr><th>Source</th><th>Title</th><th>Agency</th><th>Deadline</th><th>Amount</th><th>Score</th></tr></thead><tbody>" + highlight_rows + "</tbody></table>" if highlights else "<p>No new or changed grants in this run.</p>"}
+{"<h2>New &amp; Changed Grants</h2><table><thead><tr><th>Source</th><th>Title</th><th>Agency</th><th>Deadline</th><th>Amount</th><th>Score</th><th>Eligibility</th></tr></thead><tbody>" + highlight_rows + "</tbody></table>" if highlights else "<p>No new or changed grants in this run.</p>"}
 
 <h2>All Relevant Grants ({len(all_filtered)} total)</h2>
 <table>
-<thead><tr><th>Source</th><th>Title</th><th>Agency</th><th>Deadline</th><th>Amount</th><th>Score</th></tr></thead>
+<thead><tr><th>Source</th><th>Title</th><th>Agency</th><th>Deadline</th><th>Amount</th><th>Score</th><th>Eligibility</th></tr></thead>
 <tbody>{all_rows}</tbody>
 </table>
 

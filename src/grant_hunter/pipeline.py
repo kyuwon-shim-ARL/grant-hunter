@@ -246,6 +246,8 @@ def run_pipeline() -> dict:
         all_filtered=filtered,
         stats=stats,
         run_date=run_start,
+        eligibility_map=eligibility_map,
+        eligibility_reason_map=eligibility_reason_map,
     )
 
     # ── 7. Generate interactive dashboard ────────────────────────────────────
