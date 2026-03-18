@@ -50,6 +50,29 @@ def test_university_only_ineligible(engine):
     assert any("UNIVERSITY_ONLY" in r for r in result.rules_matched)
 
 
+def test_university_only_plural_patterns(engine):
+    """Plural forms of university-only patterns are recognized."""
+    cases = [
+        ("faculty members only applications accepted", "faculty members only"),
+        ("open to colleges or universities only", "colleges or universities"),
+        ("degree-granting institutions are eligible", "degree-granting institutions"),
+        ("institutions of higher education only", "institutions of higher education"),
+        ("higher education institutions only", "higher education institutions"),
+    ]
+    for description, label in cases:
+        grant = make_grant(
+            id=f"UNIV-PLURAL-{label[:10]}",
+            title="Research Grant",
+            source="nih",
+            description=description,
+        )
+        result = engine.check(grant)
+        assert result.status == "ineligible", f"Expected ineligible for: {label}"
+        assert any("UNIVERSITY_ONLY" in r for r in result.rules_matched), (
+            f"UNIVERSITY_ONLY not matched for: {label}"
+        )
+
+
 def test_university_only_not_triggered(engine):
     grant = make_grant(
         id="UNIV-002",

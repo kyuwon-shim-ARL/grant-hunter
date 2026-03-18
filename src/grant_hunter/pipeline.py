@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import subprocess
 import sys
@@ -58,13 +59,19 @@ def validate_grant(grant_dict: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
-def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3) -> list:
-    """Run collector_fn with exponential backoff retry. Returns list of grants."""
+def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, timeout: int = 300) -> list:
+    """Run collector_fn with exponential backoff retry and wall-clock timeout."""
     for attempt in range(max_retries):
         try:
-            return collector_fn()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(collector_fn)
+                return future.result(timeout=timeout)  # 5 min wall-clock timeout
+        except concurrent.futures.TimeoutError:
+            print(f"  Warning: {source_name} attempt {attempt+1}/{max_retries} timed out after {timeout}s")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
         except Exception as exc:
-            wait = 2 ** attempt  # 1s, 2s, 4s
+            wait = 2 ** attempt
             print(f"  Warning: {source_name} attempt {attempt+1}/{max_retries} failed: {exc}")
             if attempt < max_retries - 1:
                 time.sleep(wait)
@@ -350,6 +357,11 @@ def _dedup(grants: List[Grant]) -> List[Grant]:
     return list(seen_fp.values())
 
 
-if __name__ == "__main__":
+def main():
+    """CLI entry point for grant-hunter-run."""
     result = run_pipeline()
     sys.exit(0 if result["sources"] else 1)
+
+
+if __name__ == "__main__":
+    main()

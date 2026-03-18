@@ -87,7 +87,7 @@ def passes_keyword_gate(grant: Grant) -> str:
 
     if amr_pass and ai_pass:
         return "tier1"
-    if amr_pass:
+    if amr_core_hits >= 1:
         return "tier2"
     return "skip"
 

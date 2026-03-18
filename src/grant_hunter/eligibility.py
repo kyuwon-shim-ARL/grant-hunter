@@ -48,8 +48,10 @@ _HIC_EXCLUDE = [
 _UNIVERSITY_ONLY = [
     "university only", "universities only", "academic institution only",
     "academic institutions only", "faculty only", "faculty member only",
-    "college or university", "degree-granting institution",
-    "institution of higher education", "higher education institution",
+    "faculty members only", "college or university", "colleges or universities",
+    "degree-granting institution", "degree-granting institutions",
+    "institution of higher education", "institutions of higher education",
+    "higher education institution", "higher education institutions",
 ]
 
 # Rule 3 – US domestic only (NIH R01/R21 are foreign-eligible → exempt)

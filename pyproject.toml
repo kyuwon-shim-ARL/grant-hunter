@@ -16,6 +16,12 @@ dependencies = [
 
 [project.scripts]
 grant-hunter-serve = "grant_hunter.server:main"
+grant-hunter-run = "grant_hunter.pipeline:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/grant_hunter"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
