@@ -1,12 +1,12 @@
 version: 3
-updated: "2026-03-17T11:00:00Z"
+updated: "2026-03-18T09:00:00Z"
 scan_paths:
   - outputs/
 foundations: {}
 milestone:
-  name: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-  description: "NIH/EU 데이터 소스 교정, 스크래퍼 정밀화, 스코어링 통일"
-  created: "2026-03-17"
+  name: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+  description: "4차 비평 기반: 키워드 매칭 버그, MCP 서버 버그, EU 예산, dead code, 적격성 패턴, 프로덕션 안정화, 리포트 개선"
+  created: "2026-03-18"
 experiments:
   e001:
     title: "Phase 0 - NTIS/IRIS 공식 알림 등록 + 캘린더 마감 리마인더"
@@ -286,3 +286,66 @@ experiments:
     milestone: "v2.3 - 데이터 품질 정밀화 II"
     hypothesis: "7→15 mechanism code로 PAR/RFA/P01 등 foreign-eligible 인식률 향상"
     result: "r33,r61,r37,ub1,u19,p01,p50,rm1,par,rfa 추가. 7→15 codes. 107 tests pass."
+  e034:
+    title: "키워드 매칭 복수형 지원 + antimicrobial 단독어 추가"
+    status: validated
+    issue: 34
+    created: "2026-03-18"
+    depends_on: [e025]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "복수형 매칭(s? 접미사) + antimicrobial 단독어로 AI 키워드 매칭률 64%→95%, AMR recall 향상"
+    result: "filters.py _count_hits + scoring.py _tf에 s? 접미사. antimicrobial 단독 키워드 추가. 111 tests pass."
+  e035:
+    title: "MCP 서버 eligibility_map 빈 dict 버그 + jobs 메모리 누수 수정"
+    status: validated
+    issue: 35
+    created: "2026-03-18"
+    depends_on: [e006]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "server.py의 eligibility/score map 계산 복원 + jobs TTL로 MCP 대시보드 정상 동작"
+    result: "eligibility_map/score_map 계산 복원. _prune_old_jobs() 1시간 TTL. generate_html_report에도 eligibility 전달. 112 tests pass."
+  e036:
+    title: "EU 예산 필드 수정 + collector timeout 통일"
+    status: validated
+    issue: 36
+    created: "2026-03-18"
+    depends_on: [e018]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "EU totalCost→budgetTopicAction 수정으로 EU grant amount 100% None→실제 값 반환. timeout config 통일."
+    result: "EU budget multi-path fallback (budgetOverallBudget/budget/totalCost/budgetMax). REQUEST_TIMEOUT 통일. 111 tests pass."
+  e037:
+    title: "drug_discovery 키워드 dead code 활성화"
+    status: validated
+    issue: 37
+    created: "2026-03-18"
+    depends_on: [e025]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "drug_discovery 키워드를 filter gate에 통합하여 신약개발 grant recall 향상"
+    result: "tier2 + drug_discovery hit → 0.7x 페널티(기존 0.5x). DRUG_KEYWORDS 55개 활성화. 111 tests pass."
+  e038:
+    title: "적격성 패턴 복수형 + tier2 노이즈 강화"
+    status: validated
+    issue: 38
+    created: "2026-03-18"
+    depends_on: [e026, e034]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "UNIVERSITY_ONLY 복수형 추가 + tier2 조건 amr_core>=1로 노이즈 50%→20% 감소"
+    result: "UNIVERSITY_ONLY 5개 복수형 추가. tier2 조건 amr_core_hits>=1로 강화. 112 tests pass."
+  e039:
+    title: "프로덕션 안정화 (wall-clock timeout + CLI 엔트리포인트)"
+    status: validated
+    issue: 39
+    created: "2026-03-18"
+    depends_on: [e027]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "collector wall-clock timeout + grant-hunter-run 엔트리포인트로 cron 무한대기 방지 + 사용성 개선"
+    result: "ThreadPoolExecutor 300s wall-clock timeout. grant-hunter-run CLI 엔트리포인트. 112 tests pass."
+  e040:
+    title: "이메일 리포트 적격성 컬럼 + 프로필 MCP 연결"
+    status: validated
+    issue: 40
+    created: "2026-03-18"
+    depends_on: [e035, e015]
+    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
+    hypothesis: "이메일에 적격성 표시 + MCP grant_search에 profile 파라미터로 개인 맞춤 검색 지원"
+    result: "이메일 리포트 적격성 컬럼(green/orange/red). grant_search profile 파라미터. grant_list_profiles 도구. KeyError 가드. 112 tests pass."
