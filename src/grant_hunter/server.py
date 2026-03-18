@@ -36,6 +36,22 @@ def _save_config(config: dict) -> None:
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
 
+_JOB_TTL_SECONDS = 3600  # keep completed jobs for 1 hour
+
+
+def _prune_old_jobs() -> None:
+    """Remove completed/failed jobs older than _JOB_TTL_SECONDS. Call with _jobs_lock held."""
+    cutoff = datetime.utcnow() - timedelta(seconds=_JOB_TTL_SECONDS)
+    to_delete = [
+        jid
+        for jid, job in _jobs.items()
+        if job["status"] in ("completed", "failed")
+        and job.get("completed_at") is not None
+        and job["completed_at"] < cutoff
+    ]
+    for jid in to_delete:
+        del _jobs[jid]
+
 _SOURCE_MAP = {
     "nih": "grant_hunter.collectors.nih.NIHCollector",
     "eu": "grant_hunter.collectors.eu_portal.EUPortalCollector",
@@ -64,6 +80,7 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> N
 
     target_sources = sources or ALL_SOURCES
     with _jobs_lock:
+        _prune_old_jobs()
         _jobs[job_id]["pending_sources"] = list(target_sources)
 
     all_grants = []
@@ -99,10 +116,17 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> N
 
         elig_engine = EligibilityEngine()
         scorer = RelevanceScorer()
+        eligibility_map: dict = {}
+        eligibility_reason_map: dict = {}
+        score_map: dict = {}
         eligible = uncertain = ineligible = 0
         for g in filtered:
+            fp = g.fingerprint()
             r = elig_engine.check(g)
             g.relevance_score = scorer.score(g)
+            eligibility_map[fp] = r.status
+            eligibility_reason_map[fp] = r.reason
+            score_map[fp] = g.relevance_score
             if r.status == "eligible":
                 eligible += 1
             elif r.status == "uncertain":
@@ -120,9 +144,9 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> N
         )
         dashboard_path = generate_dashboard(
             all_filtered=filtered,
-            eligibility_map={},
-            eligibility_reason_map={},
-            score_map={},
+            eligibility_map=eligibility_map,
+            eligibility_reason_map=eligibility_reason_map,
+            score_map=score_map,
             stats={s: {"success": True, **v} for s, v in source_stats.items()},
             run_date=run_date,
         )
@@ -139,10 +163,12 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> N
                 "dashboard_path": str(dashboard_path),
             }
             _jobs[job_id]["status"] = "completed"
+            _jobs[job_id]["completed_at"] = datetime.utcnow()
     except Exception as exc:
         with _jobs_lock:
             _jobs[job_id]["status"] = "failed"
             _jobs[job_id]["error"] = str(exc)
+            _jobs[job_id]["completed_at"] = datetime.utcnow()
 
 
 # ── Snapshot loader ────────────────────────────────────────────────────────────
@@ -521,11 +547,26 @@ def _tool_grant_report(args: dict) -> dict:
         )
     else:
         from grant_hunter.dashboard import generate_dashboard
+        from grant_hunter.eligibility import EligibilityEngine
+        from grant_hunter.scoring import RelevanceScorer
+        elig_engine = EligibilityEngine()
+        scorer = RelevanceScorer()
+        eligibility_map: dict = {}
+        eligibility_reason_map: dict = {}
+        score_map: dict = {}
+        for g in grants:
+            fp = g.fingerprint()
+            r = elig_engine.check(g)
+            if g.relevance_score == 0.0:
+                g.relevance_score = scorer.score(g)
+            eligibility_map[fp] = r.status
+            eligibility_reason_map[fp] = r.reason
+            score_map[fp] = g.relevance_score
         path = generate_dashboard(
             all_filtered=grants,
-            eligibility_map={},
-            eligibility_reason_map={},
-            score_map={},
+            eligibility_map=eligibility_map,
+            eligibility_reason_map=eligibility_reason_map,
+            score_map=score_map,
             stats={},
             run_date=datetime.utcnow(),
         )

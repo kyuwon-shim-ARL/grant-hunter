@@ -27,7 +27,7 @@ def test_filter_includes_amr_only_as_tier2():
         id="AMR-ONLY-001",
         title="Antibiotic resistance surveillance",
         source="nih",
-        description="Study of antimicrobial resistance patterns. Drug-resistant bacteria.",
+        description="Study of antimicrobial resistance patterns in healthcare settings.",
     )
     result = filter_grants([grant])
     assert len(result) == 1
@@ -129,3 +129,66 @@ def test_amr_only_tier2():
         description="Study of antibiotic resistance and MRSA in healthcare settings.",
     )
     assert passes_keyword_gate(grant) == "tier2"
+
+
+def test_plural_keyword_matching_ai():
+    """'predictive models' (plural) should match 'predictive model' keyword."""
+    grant = make_grant(
+        id="PLURAL-AI-001",
+        title="Predictive models for antimicrobial resistance",
+        source="nih",
+        description=(
+            "We develop predictive models using neural networks to study "
+            "antimicrobial resistance patterns."
+        ),
+    )
+    result = passes_keyword_gate(grant)
+    assert result == "tier1", f"Expected tier1, got {result}"
+
+
+def test_plural_keyword_matching_amr():
+    """'antimicrobial compounds' should get AMR hits via standalone 'antimicrobial' keyword."""
+    from grant_hunter.filters import _count_hits, AMR_KEYWORDS
+
+    text = "Novel antimicrobial compounds targeting drug-resistant bacteria."
+    hits, matched = _count_hits(text, AMR_KEYWORDS)
+    assert hits >= 1, f"Expected AMR hits, got 0. matched={matched}"
+    assert any("antimicrobial" in kw.lower() for kw in matched)
+
+
+def test_tier2_amr_only_gets_standard_penalty():
+    """Pure AMR tier2 grant (no drug_discovery keywords) gets 0.5x penalty."""
+    grant = make_grant(
+        id="TIER2-PURE-001",
+        title="Antimicrobial resistance in hospitals",
+        source="nih",
+        description="Study of antibiotic resistance and MRSA in healthcare settings.",
+    )
+    result = filter_grants([grant])
+    assert len(result) == 1
+    assert result[0].relevance_score < 0.3
+
+
+def test_tier2_amr_plus_drug_discovery_gets_reduced_penalty():
+    """AMR+drug_discovery tier2 grant gets 0.7x penalty instead of 0.5x."""
+    pure_amr = make_grant(
+        id="TIER2-PURE-002",
+        title="Antimicrobial resistance in hospitals",
+        source="nih",
+        description="Study of antibiotic resistance and MRSA in healthcare settings.",
+    )
+    amr_drug = make_grant(
+        id="TIER2-DRUG-001",
+        title="Antimicrobial resistance drug discovery",
+        source="nih",
+        description=(
+            "Study of antibiotic resistance and MRSA. "
+            "Novel antibiotic drug discovery and lead optimization."
+        ),
+    )
+    pure_result = filter_grants([pure_amr])
+    drug_result = filter_grants([amr_drug])
+    assert len(pure_result) == 1
+    assert len(drug_result) == 1
+    # AMR+drug_discovery grant should score higher than pure AMR (0.7x > 0.5x penalty)
+    assert drug_result[0].relevance_score > pure_result[0].relevance_score

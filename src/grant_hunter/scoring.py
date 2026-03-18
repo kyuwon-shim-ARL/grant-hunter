@@ -81,7 +81,7 @@ def _tf(tokens: List[str], phrase: str) -> float:
     else:
         phrase_str = " ".join(phrase_tokens)
         text_str = " ".join(tokens)
-        count = len(re.findall(re.escape(phrase_str), text_str))
+        count = len(re.findall(re.escape(phrase_str) + r's?', text_str))
     # Log-normalized TF: dampens both raw count and document length
     return math.log1p(count) / math.log1p(n)
 

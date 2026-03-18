@@ -63,7 +63,7 @@ def _count_hits(text: str, keywords: List[str]) -> Tuple[int, List[str]]:
     text_lower = text.lower()
     matched = []
     for kw in keywords:
-        pattern = r'\b' + re.escape(kw.lower()) + r'\b'
+        pattern = r'\b' + re.escape(kw.lower()) + r's?\b'
         if re.search(pattern, text_lower):
             matched.append(kw)
     return len(matched), matched
@@ -107,7 +107,12 @@ def filter_grants(grants: List[Grant]) -> List[Grant]:
             continue
         grant.relevance_score = _scorer.score(grant)
         if tier == "tier2":
-            grant.relevance_score *= 0.5
+            searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
+            drug_hits, _ = _count_hits(searchable, DRUG_KEYWORDS)
+            if drug_hits >= 1:
+                grant.relevance_score *= 0.7  # reduced penalty for AMR+drug_discovery
+            else:
+                grant.relevance_score *= 0.5  # standard tier2 penalty
             tier2_count += 1
         else:
             tier1_count += 1

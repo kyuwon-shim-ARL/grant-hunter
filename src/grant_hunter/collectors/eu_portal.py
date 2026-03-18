@@ -13,6 +13,7 @@ from typing import List, Optional
 import requests
 
 from grant_hunter.collectors.base import BaseCollector
+from grant_hunter.config import REQUEST_TIMEOUT
 from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class EUPortalCollector(BaseCollector):
         return grants
 
     def _fetch_topics(self) -> List[dict]:
-        resp = requests.get(GRANTS_TENDERS_URL, timeout=60)
+        resp = requests.get(GRANTS_TENDERS_URL, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
         data = resp.json()
         topics = data["fundingData"]["GrantTenderObj"]
@@ -140,14 +141,27 @@ class EUPortalCollector(BaseCollector):
                     except ValueError:
                         continue
 
-            # Budget: legacy CORDIS totalCost field
+            # Budget: try multiple field paths across bulk JSON and legacy schemas
             amount_max: Optional[float] = None
-            cost = topic.get("totalCost")
-            if cost:
-                try:
-                    amount_max = float(str(cost).replace(",", ""))
-                except ValueError:
-                    pass
+            for budget_key in ("budgetOverallBudget", "budget", "totalCost", "budgetMax"):
+                cost = topic.get(budget_key)
+                if cost:
+                    try:
+                        amount_max = float(str(cost).replace(",", ""))
+                        break
+                    except ValueError:
+                        pass
+            # Also try nested budgetTopicActionList
+            if amount_max is None:
+                budget_list = topic.get("budgetTopicActionList") or []
+                for entry in budget_list:
+                    val = entry.get("budgetMax") or entry.get("budget") or entry.get("budgetTopicAction")
+                    if val:
+                        try:
+                            amount_max = float(str(val).replace(",", ""))
+                            break
+                        except ValueError:
+                            pass
 
             # URL
             if topic.get("identifier"):
