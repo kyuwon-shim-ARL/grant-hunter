@@ -141,6 +141,8 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> N
             all_filtered=filtered,
             stats={s: {"success": True, **v} for s, v in source_stats.items()},
             run_date=run_date,
+            eligibility_map=eligibility_map,
+            eligibility_reason_map=eligibility_reason_map,
         )
         dashboard_path = generate_dashboard(
             all_filtered=filtered,
@@ -459,8 +461,12 @@ def _tool_grant_search(args: dict) -> list:
 
     # Score and sort using specified profile
     from grant_hunter.scoring import RelevanceScorer
-    from grant_hunter.profiles import get_profile
-    profile = get_profile(profile_name)
+    from grant_hunter.profiles import get_profile, list_profiles
+    try:
+        profile = get_profile(profile_name)
+    except KeyError:
+        available = ", ".join(list_profiles().keys())
+        return {"error": f"Unknown profile '{profile_name}'. Available: {available}"}
     scorer = RelevanceScorer(profile=profile)
     scored = sorted(results, key=lambda g: scorer.score(g), reverse=True)[:20]
 
@@ -563,12 +569,23 @@ def _tool_grant_report(args: dict) -> dict:
 
     if fmt == "html":
         from grant_hunter.report_generator import generate_html_report
+        from grant_hunter.eligibility import EligibilityEngine as _EE
+        _ee = _EE()
+        _emap: dict = {}
+        _ermap: dict = {}
+        for g in grants:
+            fp = g.fingerprint()
+            r = _ee.check(g)
+            _emap[fp] = r.status
+            _ermap[fp] = r.reason
         path = generate_html_report(
             new_grants=grants,
             changed_grants=[],
             all_filtered=grants,
             stats={},
             run_date=datetime.utcnow(),
+            eligibility_map=_emap,
+            eligibility_reason_map=_ermap,
         )
     else:
         from grant_hunter.dashboard import generate_dashboard
