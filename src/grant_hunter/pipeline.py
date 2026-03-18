@@ -20,7 +20,7 @@ from grant_hunter.filters import filter_grants, diff_grants
 from grant_hunter.models import Grant
 from grant_hunter.report_generator import generate_html_report
 from grant_hunter.dashboard import generate_dashboard
-from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR, SNAPSHOTS_DIR
+from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR, SNAPSHOTS_DIR, NIH_COLLECTOR_TIMEOUT
 
 logger = logging.getLogger("pipeline")
 _logging_configured = False
@@ -59,13 +59,13 @@ def validate_grant(grant_dict: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
-def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, timeout: int = 600) -> list:
+def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, timeout: int = NIH_COLLECTOR_TIMEOUT) -> list:
     """Run collector_fn with exponential backoff retry and wall-clock timeout (10 min default)."""
     for attempt in range(max_retries):
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(collector_fn)
-                return future.result(timeout=timeout)  # 5 min wall-clock timeout
+                return future.result(timeout=timeout)  # wall-clock timeout (configurable)
         except concurrent.futures.TimeoutError:
             print(f"  Warning: {source_name} attempt {attempt+1}/{max_retries} timed out after {timeout}s")
             if attempt < max_retries - 1:
@@ -79,10 +79,17 @@ def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, ti
     return []
 
 
+ACTIVE_COLLECTORS = {"nih", "eu", "grants_gov"}
+
+
 def check_staleness(snapshot_dir: Path, max_age_hours: int = 48) -> list:
     """Return list of stale source names (snapshot files older than max_age_hours)."""
     stale = []
     for f in snapshot_dir.glob("*.json"):
+        # Skip orphan snapshots from deleted collectors
+        source_name = f.stem.rsplit("_", 1)[0] if "_" in f.stem else f.stem
+        if source_name not in ACTIVE_COLLECTORS:
+            continue
         age = datetime.now() - datetime.fromtimestamp(f.stat().st_mtime)
         if age > timedelta(hours=max_age_hours):
             stale.append(f.stem)
@@ -103,20 +110,19 @@ def _run_collector(collector: BaseCollector) -> Tuple[List[Grant], dict]:
 
 def _send_email_report(subject: str, body: str, html_path: Path) -> bool:
     """Send report via ~/bin/send-email utility."""
-    cmd = ["send-email", REPORT_EMAIL, subject, body, "--html"]
     try:
-        # If report HTML exists, read it and pass as body
         if html_path.exists():
-            html_body = html_path.read_text(encoding="utf-8")
+            # Pass file path instead of HTML content to avoid ARG_MAX limit
             result = subprocess.run(
-                ["send-email", REPORT_EMAIL, subject, html_body, "--html"],
+                ["send-email", REPORT_EMAIL, subject, body,
+                 "--html", "--file", str(html_path)],
                 capture_output=True,
                 text=True,
                 timeout=60,
             )
         else:
             result = subprocess.run(
-                cmd,
+                ["send-email", REPORT_EMAIL, subject, body, "--html"],
                 capture_output=True,
                 text=True,
                 timeout=60,

@@ -24,7 +24,7 @@ echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Pipeline finished with exit code ${EXIT_C
   | tee -a "${LOG_DIR}/pipeline_${DATE}.log"
 
 if [ ${EXIT_CODE} -ne 0 ]; then
-  send-email "kyuwon.song@ip-korea.org" \
+  send-email "kyuwon.shim@ip-korea.org" \
     "[Grant Hunter] Pipeline FAILED (exit code ${EXIT_CODE})" \
     "Pipeline failed at $(date -u +%Y-%m-%dT%H:%M:%SZ). Check log: ${LOG_DIR}/pipeline_${DATE}.log" \
     2>/dev/null || true

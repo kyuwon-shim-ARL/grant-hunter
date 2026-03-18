@@ -23,7 +23,7 @@ def init_data_dirs():
         d.mkdir(parents=True, exist_ok=True)
 
 # Email
-REPORT_EMAIL = os.environ.get("GRANT_REPORT_EMAIL", "kyuwon.song@ip-korea.org")
+REPORT_EMAIL = os.environ.get("GRANT_REPORT_EMAIL", "kyuwon.shim@ip-korea.org")
 
 # Pipeline behaviour
 # On first run (no previous snapshot) just save baseline, do not send email
@@ -43,3 +43,4 @@ GRANTS_GOV_PAGE_SIZE = 25
 GRANTS_GOV_MAX_PAGES = 4
 
 REQUEST_TIMEOUT = 30  # seconds
+NIH_COLLECTOR_TIMEOUT = int(os.environ.get("NIH_COLLECTOR_TIMEOUT", "1800"))

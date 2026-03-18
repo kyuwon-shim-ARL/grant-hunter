@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from typing import List, Optional
 
@@ -46,19 +48,27 @@ class NIHCollector(BaseCollector):
     def collect(self) -> List[Grant]:
         grants: List[Grant] = []
         seen_ids: set = set()
+        seen_lock = threading.Lock()
 
-        for term in NIH_SEARCH_TERMS:
+        def _search_term(term: str) -> List[Grant]:
+            local_results = []
             try:
-                fetched = self._search(term, seen_ids)
-                grants.extend(fetched)
+                fetched = self._search_term_safe(term, seen_ids, seen_lock)
+                local_results.extend(fetched)
                 logger.info("[nih] Term '%s' -> %d new opportunities", term, len(fetched))
             except Exception as exc:
                 logger.error("[nih] Error searching '%s': %s", term, exc)
+            return local_results
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(_search_term, term): term for term in NIH_SEARCH_TERMS}
+            for future in as_completed(futures):
+                grants.extend(future.result())
 
         logger.info("[nih] Total collected: %d unique opportunities", len(grants))
         return grants
 
-    def _search(self, term: str, seen_ids: set) -> List[Grant]:
+    def _search_term_safe(self, term: str, seen_ids: set, seen_lock: threading.Lock) -> List[Grant]:
         results: List[Grant] = []
         start = 0
 
@@ -86,12 +96,13 @@ class NIHCollector(BaseCollector):
 
             for item in hits:
                 opp_number = item.get("number", "")
-                if not opp_number or opp_number in seen_ids:
-                    continue
+                with seen_lock:
+                    if not opp_number or opp_number in seen_ids:
+                        continue
+                    seen_ids.add(opp_number)
 
                 grant = self._fetch_and_parse(item)
                 if grant:
-                    seen_ids.add(opp_number)
                     results.append(grant)
                     time.sleep(DETAIL_RATE_LIMIT)
 
