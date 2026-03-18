@@ -1,0 +1,302 @@
+[
+  {
+    "id": "val-001",
+    "title": "Machine Learning for Predicting Antimicrobial Resistance in ESKAPE Pathogens",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "This project develops deep learning models to predict antimicrobial resistance patterns in ESKAPE pathogens using whole genome sequencing data. Novel neural network architectures will be trained on more than 100,000 isolate genomes to identify resistance determinants and predict minimum inhibitory concentrations. The computational pipeline integrates convolutional neural networks with graph neural networks to capture both sequence-level and structural features of resistance genes. Outputs include a validated predictive model and open-source bioinformatics tools for clinical AMR surveillance.",
+    "amount_max": 2500000,
+    "relevance_label": "high",
+    "label_reason": "Direct AMR+AI intersection: deep learning for AMR prediction with WGS"
+  },
+  {
+    "id": "val-002",
+    "title": "AI-Driven Drug Discovery for Novel Antibiotics Against Carbapenem-Resistant Bacteria",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Using generative AI and molecular dynamics simulations to discover novel antibiotic compounds targeting carbapenem-resistant Enterobacteriaceae. The project combines graph neural networks with high-throughput screening to accelerate hit identification. Generative adversarial networks will propose candidate scaffolds, which will be evaluated using QSAR models and ADMET prediction pipelines. Lead compounds will undergo in vitro MIC assays and in vivo infection models to validate activity against multidrug-resistant clinical isolates.",
+    "amount_max": 5000000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI+Drug: generative AI for antibiotic drug discovery against carbapenem-resistant bacteria"
+  },
+  {
+    "id": "val-003",
+    "title": "Federated Learning for Global AMR Surveillance Network",
+    "agency": "BARDA",
+    "source": "grants_gov",
+    "description": "A federated learning framework for integrating antimicrobial resistance surveillance data across 50 international hospital networks without sharing raw patient data. Machine learning models will be trained in a privacy-preserving manner to detect emerging resistance patterns, predict outbreak risk, and identify MDR and XDR pathogen clusters. The system uses transformer-based models to analyze whole genome sequencing outputs, metagenomics data, and clinical metadata to generate real-time AMR alerts for antibiotic stewardship programs.",
+    "amount_max": 8000000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI: federated learning for global AMR surveillance"
+  },
+  {
+    "id": "val-004",
+    "title": "Natural Language Processing for Automated Extraction of AMR Data from Clinical Records",
+    "agency": "AHRQ",
+    "source": "grants_gov",
+    "description": "This project applies large language models and natural language processing to automatically extract antimicrobial resistance phenotypes and susceptibility testing results from unstructured clinical notes. A transformer-based NLP pipeline will be fine-tuned on annotated clinical records to identify MRSA infections, carbapenemase producers, and ESBL-positive organisms. The tool will enable real-time surveillance and antibiotic stewardship decision support, linking extracted resistance data with epidemiological metadata for outbreak detection and infection control.",
+    "amount_max": 1800000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI: NLP/LLM for AMR data extraction and stewardship"
+  },
+  {
+    "id": "val-005",
+    "title": "Reinforcement Learning for Optimizing Antibiotic Treatment Regimens in ICU Patients",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Development of a reinforcement learning clinical decision support system to optimize antibiotic dosing and selection for ICU patients with drug-resistant bacterial infections including Klebsiella pneumoniae and Acinetobacter baumannii. The model integrates pharmacokinetics, pharmacodynamics, and real-time susceptibility testing data to recommend personalized treatment regimens that minimize resistance development. Bayesian optimization is used to handle uncertainty in patient-specific parameters. Validation will be conducted in a prospective cohort study across three academic medical centers.",
+    "amount_max": 3200000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI: reinforcement learning for antibiotic treatment optimization"
+  },
+  {
+    "id": "val-006",
+    "title": "Graph Neural Networks for Predicting Horizontal Gene Transfer of Resistance Plasmids",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "This study develops graph neural network models to predict horizontal gene transfer events that spread antibiotic resistance plasmids among clinical bacterial populations. Using metagenomics and whole genome sequencing data from hospital surveillance, the GNN will model the mobilome and integron dynamics driving the spread of extended-spectrum beta-lactamase and carbapenemase genes. The computational framework will identify high-risk plasmid lineages and predict clonal spread events, informing infection prevention and antimicrobial stewardship strategies.",
+    "amount_max": 2100000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI: GNN for horizontal gene transfer and resistance spread prediction"
+  },
+  {
+    "id": "val-007",
+    "title": "Deep Learning-Enabled Rapid Diagnostics for Multidrug-Resistant Tuberculosis",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "A deep learning platform for rapid diagnosis of multidrug-resistant Mycobacterium tuberculosis from whole genome sequencing and clinical imaging data. Convolutional neural networks will analyze chest X-rays and CT scans in parallel with resistance gene profiling to enable same-day MDR-TB diagnosis. The system integrates phenotypic susceptibility testing predictions with genotypic resistance determinants. Deployment in high-burden low-income settings will be validated through a prospective clinical study in South Africa and India.",
+    "amount_max": 4500000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI: deep learning for MDR tuberculosis diagnostics"
+  },
+  {
+    "id": "val-008",
+    "title": "Generative AI for De Novo Antimicrobial Peptide Design Against Drug-Resistant Pathogens",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Application of generative AI including variational autoencoders and diffusion models for de novo design of antimicrobial peptides active against drug-resistant gram-negative bacteria. The project combines molecular generation with in silico ADMET prediction and QSAR models to filter candidates before experimental validation. High-throughput screening and MIC assays will test top-ranked peptides against MRSA, carbapenem-resistant Klebsiella, and colistin-resistant Acinetobacter. Structure-activity relationship analysis will guide iterative optimization of lead compounds.",
+    "amount_max": 3800000,
+    "relevance_label": "high",
+    "label_reason": "AMR+AI+Drug: generative AI for antimicrobial peptide design"
+  },
+  {
+    "id": "val-009",
+    "title": "Whole Genome Sequencing Surveillance of MRSA in Healthcare Settings",
+    "agency": "CDC",
+    "source": "grants_gov",
+    "description": "A prospective surveillance study using whole genome sequencing to characterize MRSA transmission dynamics in hospital settings. WGS data from clinical isolates will be analyzed using standard bioinformatics pipelines to identify clonal spread, outbreak clusters, and nosocomial transmission routes. The study will track MRSA bacteremia and healthcare-associated infection rates across 12 acute care hospitals over three years. Results will inform evidence-based infection control and antibiotic stewardship protocols.",
+    "amount_max": 1500000,
+    "relevance_label": "medium",
+    "label_reason": "AMR surveillance with WGS and bioinformatics, but no ML/AI component — standard genomic epidemiology"
+  },
+  {
+    "id": "val-010",
+    "title": "Bioinformatics Pipeline for Resistome Characterization from Metagenomic Samples",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Development and validation of an open-source bioinformatics pipeline for comprehensive resistome characterization from clinical and environmental metagenomic samples. The pipeline integrates read mapping, assembly, and resistance gene identification to profile antibiotic resistance genes across diverse sample types. Computational tools will catalogue the mobilome and identify integrons and transposons associated with horizontal gene transfer. The resource will support One Health AMR surveillance linking human, animal, and environmental resistance reservoirs.",
+    "amount_max": 900000,
+    "relevance_label": "medium",
+    "label_reason": "AMR bioinformatics with computational tools, but no ML/AI — rule-based pipeline"
+  },
+  {
+    "id": "val-011",
+    "title": "Drug Repurposing Screen for Novel Antibiotics Against Fluoroquinolone-Resistant Pathogens",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "A high-throughput phenotypic screening campaign to identify FDA-approved drugs with activity against fluoroquinolone-resistant and multidrug-resistant gram-negative bacteria. The study will screen 3,000 approved compounds against clinical isolates of resistant Pseudomonas aeruginosa and Enterobacteriaceae using MIC assays and time-kill studies. Hit compounds will undergo checkerboard assays to evaluate synergy with existing antibiotics. Lead combinations will be tested in mouse infection models for in vivo efficacy validation.",
+    "amount_max": 2200000,
+    "relevance_label": "medium",
+    "label_reason": "AMR drug discovery with HTS, but no AI/ML component — traditional medicinal chemistry approach"
+  },
+  {
+    "id": "val-012",
+    "title": "Computational Prediction of Antibiotic Synergy Using Structure-Activity Relationships",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "This project uses computational chemistry and QSAR modeling to predict synergistic antibiotic combinations against multidrug-resistant bacteria. Molecular docking and structure-activity relationship analysis will identify compound pairs that target complementary resistance mechanisms. Computational predictions will be validated by checkerboard assays and time-kill studies against carbapenem-resistant and ESBL-positive clinical isolates. The study aims to identify at least five novel antibiotic combinations suitable for preclinical development.",
+    "amount_max": 1100000,
+    "relevance_label": "medium",
+    "label_reason": "AMR+computational chemistry: QSAR and docking for antibiotic synergy, but not modern ML"
+  },
+  {
+    "id": "val-013",
+    "title": "One Health AMR Surveillance Linking Human, Animal, and Environmental Reservoirs",
+    "agency": "USDA",
+    "source": "grants_gov",
+    "description": "A longitudinal One Health surveillance program tracking antimicrobial resistance across human clinical, livestock, and environmental water samples in agricultural regions. Resistance gene profiling using whole genome sequencing and metagenomics will characterize the flow of resistance determinants between reservoirs. The project will quantify the role of aminoglycoside and tetracycline resistance genes shared between livestock and human clinical isolates. Findings will inform antibiotic stewardship policies in both clinical and agricultural settings.",
+    "amount_max": 2800000,
+    "relevance_label": "medium",
+    "label_reason": "AMR surveillance using WGS/metagenomics, limited computational AI"
+  },
+  {
+    "id": "val-014",
+    "title": "Phage Therapy Development for Drug-Resistant Bacterial Infections",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Preclinical development of bacteriophage therapy targeting drug-resistant Klebsiella pneumoniae and Pseudomonas aeruginosa infections. The project will screen phage libraries for host range and activity against carbapenem-resistant clinical isolates, characterize phage-bacteria interactions including resistance mechanisms, and optimize phage cocktail formulations. In vitro bactericidal activity and in vivo murine infection models will assess therapeutic efficacy and safety. A compassionate use IND application will be prepared for severe nosocomial infections.",
+    "amount_max": 3000000,
+    "relevance_label": "medium",
+    "label_reason": "AMR-targeted therapy (phage), but no AI/ML component"
+  },
+  {
+    "id": "val-015",
+    "title": "Predictive Modeling of AMR Spread Using Epidemiological Data and Machine Learning",
+    "agency": "ECDC",
+    "source": "eu",
+    "description": "Application of machine learning to predict the spread of antimicrobial resistance across European hospital networks using epidemiological surveillance data. Gradient boosting and ensemble learning models will be trained on national AMR surveillance datasets to forecast emergence of ESBL-producing Enterobacteriaceae and carbapenemase-producing organisms. The predictive framework will identify high-risk transmission pathways and evaluate the impact of antibiotic stewardship interventions on resistance rates across different healthcare systems.",
+    "amount_max": 1700000,
+    "relevance_label": "medium",
+    "label_reason": "AMR+AI with ML for epidemiological prediction, but indirect use of AI"
+  },
+  {
+    "id": "val-016",
+    "title": "Antimicrobial Stewardship Program Implementation in Low-Income Countries",
+    "agency": "WHO",
+    "source": "eu",
+    "description": "A multi-country implementation study evaluating the effectiveness of hospital-based antimicrobial stewardship programs in reducing antibiotic resistance rates in sub-Saharan Africa. The project will deploy standardized stewardship interventions including antibiotic prescribing guidelines, susceptibility testing protocols, and infection control measures across 20 hospitals. Outcomes include antibiotic use metrics, resistance rates for gram-negative pathogens, and healthcare-associated infection incidence. The study emphasizes health system strengthening in resource-limited settings.",
+    "amount_max": 4200000,
+    "relevance_label": "medium",
+    "label_reason": "AMR stewardship and infection control, but implementation science without AI"
+  },
+  {
+    "id": "val-017",
+    "title": "Molecular Mechanisms of Efflux Pump-Mediated Antibiotic Resistance in Pseudomonas",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Basic science investigation of efflux pump mechanisms driving multidrug resistance in Pseudomonas aeruginosa clinical isolates. The project uses cryo-electron microscopy and X-ray crystallography to characterize the structural basis of efflux pump substrate recognition and inhibitor binding. Functional studies will assess the contribution of specific efflux pumps to fluoroquinolone and aminoglycoside resistance. The work will identify structural features suitable for efflux pump inhibitor drug discovery to overcome resistance.",
+    "amount_max": 1300000,
+    "relevance_label": "low",
+    "label_reason": "AMR mechanistic biology but no AI/ML and drug discovery is speculative endpoint only"
+  },
+  {
+    "id": "val-018",
+    "title": "Broad-Spectrum Antiviral Drug Discovery Using High-Throughput Screening",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "High-throughput phenotypic screening of 50,000 compounds for broad-spectrum antiviral activity against emerging RNA viruses including influenza, SARS-CoV-2 variants, and flaviviruses. Hit compounds will undergo structure-activity relationship analysis, ADMET profiling, and in vitro antiviral assays. Lead candidates will be advanced to in vivo efficacy studies in murine infection models. The project focuses on identifying novel drug scaffolds targeting conserved viral replication mechanisms for pandemic preparedness.",
+    "amount_max": 3500000,
+    "relevance_label": "low",
+    "label_reason": "Antiviral drug discovery with HTS — adjacent (drug discovery) but not AMR or AI"
+  },
+  {
+    "id": "val-019",
+    "title": "AI for Early Detection of Sepsis in Emergency Department Patients",
+    "agency": "AHRQ",
+    "source": "grants_gov",
+    "description": "A machine learning clinical decision support tool for early sepsis detection using electronic health record data in emergency department settings. Ensemble learning models integrating vital signs, laboratory values, and clinical notes will be trained to predict sepsis onset within six hours. The deep learning system will be validated in a prospective multicenter study across 10 emergency departments. Implementation science methods will evaluate barriers to clinician adoption and impact on sepsis mortality and antibiotic administration timing.",
+    "amount_max": 2000000,
+    "relevance_label": "low",
+    "label_reason": "AI for sepsis detection — AI is strong but AMR connection is indirect (antibiotic timing only)"
+  },
+  {
+    "id": "val-020",
+    "title": "Machine Learning for Protein Structure Prediction in Infectious Disease Research",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Application of AlphaFold and transformer-based protein structure prediction to characterize virulence factors and surface proteins of major bacterial pathogens. The computational biology project will predict structures of uncharacterized proteins from Salmonella, Helicobacter pylori, and Clostridioides difficile to identify novel drug targets. Molecular dynamics simulations and virtual screening will assess ligand binding feasibility for identified targets. The focus is on general pathogen biology rather than antibiotic resistance.",
+    "amount_max": 1600000,
+    "relevance_label": "low",
+    "label_reason": "AI for protein structure in infectious disease — AI strong, bacteria present, but AMR is peripheral"
+  },
+  {
+    "id": "val-021",
+    "title": "Genomic Epidemiology of Hospital-Acquired Infections in Intensive Care Units",
+    "agency": "CDC",
+    "source": "grants_gov",
+    "description": "A genomic epidemiology study characterizing the transmission dynamics of healthcare-associated infections in intensive care units using whole genome sequencing. Clinical isolates from bloodstream infections, pneumonia, and urinary tract infections will be sequenced to identify outbreak clusters and transmission networks. The study tracks nosocomial pathogens including Enterococcus, Staphylococcus aureus, and gram-negative rods. Findings will inform targeted infection prevention interventions and environmental decontamination protocols.",
+    "amount_max": 1200000,
+    "relevance_label": "low",
+    "label_reason": "HAI genomic epidemiology with WGS — relevant pathogens but no AMR focus or AI methods"
+  },
+  {
+    "id": "val-022",
+    "title": "Biofilm Formation Mechanisms and Inhibition Strategies in Clinical Isolates",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Investigation of molecular mechanisms regulating biofilm formation in clinical isolates of Staphylococcus aureus and Pseudomonas aeruginosa. The project uses genetic screens, transcriptomics, and microscopy to identify biofilm regulators and characterize the contribution of biofilm to antibiotic tolerance. Small molecule inhibitors of biofilm formation will be identified through phenotypic screening. The study aims to develop anti-biofilm compounds as adjuncts to antibiotic therapy for chronic infections.",
+    "amount_max": 950000,
+    "relevance_label": "low",
+    "label_reason": "Biofilm biology with antibiotic tolerance context — AMR adjacent but no AI, not resistance per se"
+  },
+  {
+    "id": "val-023",
+    "title": "Microbiome Dysbiosis and Clostridium difficile Infection Following Antibiotic Exposure",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "A prospective cohort study examining gut microbiome changes following broad-spectrum antibiotic exposure and the risk of Clostridioides difficile infection. Shotgun metagenomics will characterize microbiome composition and functional capacity before and after antibiotic courses. Logistic regression and linear discriminant analysis will identify microbiome signatures predictive of C. difficile colonization. The study will enroll 500 hospitalized patients receiving vancomycin, cephalosporin, or fluoroquinolone antibiotics.",
+    "amount_max": 1800000,
+    "relevance_label": "low",
+    "label_reason": "Microbiome and C. diff after antibiotics — antibiotic use context but not AMR or AI drug discovery"
+  },
+  {
+    "id": "val-024",
+    "title": "Artificial Intelligence for Early Lung Cancer Detection from CT Imaging",
+    "agency": "NCI",
+    "source": "nih",
+    "description": "A deep learning system for automated detection of early-stage lung cancer nodules in low-dose CT scans. Convolutional neural networks trained on large annotated imaging datasets will achieve radiologist-level sensitivity and specificity for nodule detection. The AI platform will integrate with hospital PACS systems for real-time clinical decision support. Prospective validation will assess the impact on lung cancer stage at diagnosis and patient survival outcomes in a multicenter randomized trial.",
+    "amount_max": 6000000,
+    "relevance_label": "irrelevant",
+    "label_reason": "AI for cancer imaging — strong AI but no AMR, antibiotics, or drug-resistant bacteria"
+  },
+  {
+    "id": "val-025",
+    "title": "Climate Change Impacts on Vector-Borne Disease Distribution in Tropical Regions",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Epidemiological modeling of climate change effects on the geographic distribution and transmission intensity of malaria, dengue, and Zika virus in tropical and subtropical regions. The project uses climate projection models combined with epidemiological surveillance data to forecast shifts in disease burden through 2050. Statistical models will quantify the relationship between temperature, precipitation, and vector population dynamics. Public health adaptation strategies for climate-sensitive infectious diseases will be evaluated.",
+    "amount_max": 2300000,
+    "relevance_label": "irrelevant",
+    "label_reason": "Climate and vector-borne disease — no AMR, no AI/ML drug discovery connection"
+  },
+  {
+    "id": "val-026",
+    "title": "Cognitive Behavioral Therapy Delivered via Mobile Application for Anxiety Disorders",
+    "agency": "NIMH",
+    "source": "nih",
+    "description": "A randomized controlled trial evaluating the efficacy of a smartphone-based cognitive behavioral therapy intervention for generalized anxiety disorder and panic disorder. The digital mental health platform delivers structured CBT modules with therapist support and automated progress tracking. Secondary outcomes include quality of life, functional impairment, and healthcare utilization. The study will enroll 600 participants across 15 community mental health centers with a 12-month follow-up period.",
+    "amount_max": 1900000,
+    "relevance_label": "irrelevant",
+    "label_reason": "Mental health digital intervention — completely unrelated to AMR or AI drug discovery"
+  },
+  {
+    "id": "val-027",
+    "title": "Genomic Determinants of Type 2 Diabetes Risk in Diverse Populations",
+    "agency": "NIDDK",
+    "source": "nih",
+    "description": "A genome-wide association study examining genetic variants associated with type 2 diabetes risk across diverse ancestral populations. The project will analyze whole genome sequencing data from 200,000 individuals to identify novel diabetes susceptibility loci with population-specific effects. Polygenic risk score development and validation will assess clinical utility for diabetes prediction and prevention. The study emphasizes inclusion of underrepresented populations in genomic research.",
+    "amount_max": 12000000,
+    "relevance_label": "irrelevant",
+    "label_reason": "Diabetes genomics GWAS — no AMR, no antibiotics, no drug discovery AI"
+  },
+  {
+    "id": "val-028",
+    "title": "Mathematical Modeling of Epidemic Dynamics for Pandemic Preparedness",
+    "agency": "NIH",
+    "source": "nih",
+    "description": "Development of stochastic compartmental models and agent-based simulations for pandemic preparedness planning. The project will build flexible epidemiological frameworks for modeling respiratory viral transmission, vaccine efficacy waning, and non-pharmaceutical interventions. Bayesian methods will be used for parameter estimation from surveillance data. The mathematical models will support real-time decision making during epidemic emergencies and evaluate the cost-effectiveness of public health response strategies.",
+    "amount_max": 2700000,
+    "relevance_label": "irrelevant",
+    "label_reason": "Epidemic mathematical modeling — Bayesian methods present but not AMR or antibiotic resistance focus"
+  },
+  {
+    "id": "val-029",
+    "title": "Social Determinants of Health and Cardiovascular Disease Disparities",
+    "agency": "NHLBI",
+    "source": "nih",
+    "description": "A mixed-methods study examining how social determinants of health including housing instability, food insecurity, and neighborhood poverty contribute to racial and ethnic disparities in cardiovascular disease outcomes. The project combines electronic health record data analysis with community-based participatory research methods. Machine learning models will identify high-risk individuals for targeted cardiovascular prevention interventions. The study aims to inform equitable health system policies and community health programs.",
+    "amount_max": 3100000,
+    "relevance_label": "irrelevant",
+    "label_reason": "Cardiovascular disparities social science — ML mentioned but no AMR or antimicrobial drug focus"
+  },
+  {
+    "id": "val-030",
+    "title": "Neuroscience of Decision Making Under Uncertainty Using fMRI and Computational Models",
+    "agency": "NIMH",
+    "source": "nih",
+    "description": "Investigation of neural circuits underlying decision making under uncertainty using functional MRI, computational modeling, and reinforcement learning theory. The project will identify brain regions and connectivity patterns associated with risk assessment and reward learning in healthy adults and individuals with anxiety disorders. Bayesian computational models will be fit to behavioral and neuroimaging data to characterize individual differences in uncertainty tolerance. Findings will inform mechanistic theories of anxiety and compulsive behavior.",
+    "amount_max": 2000000,
+    "relevance_label": "irrelevant",
+    "label_reason": "Neuroscience with computational/RL methods — no AMR, bacteria, or drug discovery"
+  }
+]

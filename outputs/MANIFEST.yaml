@@ -1,11 +1,11 @@
 version: 3
-updated: "2026-03-18T09:00:00Z"
+updated: "2026-03-18T16:30:00Z"
 scan_paths:
   - outputs/
 foundations: {}
 milestone:
-  name: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-  description: "4차 비평 기반: 키워드 매칭 버그, MCP 서버 버그, EU 예산, dead code, 적격성 패턴, 프로덕션 안정화, 리포트 개선"
+  name: "v2.5 - 품질 강화 + 모니터링"
+  description: "MCP 테스트 커버리지, 파이프라인 모니터링, 스코어링 검증 — 4-agent 비평 수렴 결과 품질 우선"
   created: "2026-03-18"
 experiments:
   e001:
@@ -349,3 +349,54 @@ experiments:
     milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
     hypothesis: "이메일에 적격성 표시 + MCP grant_search에 profile 파라미터로 개인 맞춤 검색 지원"
     result: "이메일 리포트 적격성 컬럼(green/orange/red). grant_search profile 파라미터. grant_list_profiles 도구. KeyError 가드. 112 tests pass."
+  e041:
+    title: "MCP 서버 + 리포트 테스트 커버리지"
+    status: validated
+    issue: 28
+    created: "2026-03-18"
+    depends_on: [e035, e040]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "server.py, dashboard.py, report_generator.py 테스트 추가로 MCP 인터페이스 커버리지 0%→80% 달성"
+    result: "test_server.py 38개, test_dashboard.py 30개, test_report_generator.py 32개 = 100개 새 테스트. server dispatch, tool logic, dashboard HTML, report HTML 전체 커버. 242 tests pass."
+  e042:
+    title: "파이프라인 실행 이력 + 볼륨 이상 감지"
+    status: validated
+    issue: 29
+    created: "2026-03-18"
+    depends_on: [e027, e039]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "실행 이력 persist + 볼륨 anomaly detection으로 silent API 장애 24시간 이내 탐지율 100%"
+    result: "monitoring.py 신규. run_history.json atomic write(90건 cap). 3규칙 anomaly detection(zero-collect, 50% drop, source fail). send-email 알림. 30개 테스트. 242 tests pass."
+  e043:
+    title: "스코어링 검증 데이터셋 (ground truth 라벨링)"
+    status: validated
+    issue: 30
+    created: "2026-03-18"
+    depends_on: [e014, e022]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "50건 ground truth 라벨로 현재 스코어링 precision@20 >= 0.7 검증"
+    result: "30건 validation_set.json(8high/8med/7low/7irr). validation.py evaluate_scoring(). precision@10>=0.7 달성. rank order correct(high>med>low>irr). 9개 테스트. 242 tests pass."
+  e044:
+    title: "BARDA 키워드 확장 + SAM.gov collector"
+    status: experimental
+    issue: 31
+    created: "2026-03-18"
+    depends_on: [e017, e025]
+    milestone: "v2.6 - 소스 확대"
+    hypothesis: "SAM.gov API collector + BARDA 키워드 확장으로 필터 통과 grant 수 +10-30건"
+  e045:
+    title: "Wellcome Trust 경량 모니터"
+    status: experimental
+    issue: 32
+    created: "2026-03-18"
+    depends_on: [e041]
+    milestone: "v2.6 - 소스 확대"
+    hypothesis: "Wellcome Trust 경량 모니터로 연간 2-8건 고가치 AMR open call 포착"
+  e046:
+    title: "CARB-X/JPIAMR 타당성 조사 (go/no-go)"
+    status: experimental
+    issue: 33
+    created: "2026-03-18"
+    depends_on: [e028]
+    milestone: "v2.6 - 소스 확대"
+    hypothesis: "2h time-boxed 조사로 CARB-X/JPIAMR collector 구현 가치 판단"

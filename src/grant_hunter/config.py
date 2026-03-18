@@ -15,6 +15,7 @@ SNAPSHOTS_DIR = DATA_HOME / "snapshots"
 REPORTS_DIR = DATA_HOME / "reports"
 LOGS_DIR = DATA_HOME / "logs"
 CONFIG_FILE = DATA_HOME / "config.json"
+RUN_HISTORY_FILE = DATA_HOME / "run_history.json"
 
 def init_data_dirs():
     """Create runtime data directories on demand."""
