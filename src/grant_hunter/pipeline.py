@@ -59,8 +59,8 @@ def validate_grant(grant_dict: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
-def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, timeout: int = 300) -> list:
-    """Run collector_fn with exponential backoff retry and wall-clock timeout."""
+def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, timeout: int = 600) -> list:
+    """Run collector_fn with exponential backoff retry and wall-clock timeout (10 min default)."""
     for attempt in range(max_retries):
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
