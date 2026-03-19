@@ -78,7 +78,15 @@
       "bacteremia",
       "urinary tract infection",
       "pneumonia",
-      "antimicrobial"
+      "antimicrobial",
+      "resistant to antimicrobials",
+      "resistant to antibiotics",
+      "pathogens resistant to antibiotics",
+      "pathogens resistant to antimicrobials",
+      "resistance to antimicrobials",
+      "resistance to antibiotics",
+      "drug resistant infection",
+      "drug resistant pathogen"
     ],
     "ko": [
       "항생제 내성",

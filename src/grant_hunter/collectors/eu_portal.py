@@ -7,6 +7,8 @@ Endpoint: https://ec.europa.eu/info/funding-tenders/opportunities/data/reference
 from __future__ import annotations
 
 import logging
+import re
+import time
 from datetime import date, datetime, timezone
 from typing import List, Optional
 
@@ -57,6 +59,7 @@ class EUPortalCollector(BaseCollector):
             grant = self._parse(topic)
             if grant is not None:
                 grants.append(grant)
+            time.sleep(0.3)  # rate-limit SEDIA API calls
 
         logger.info("[eu] Total collected: %d relevant open/forthcoming grants", len(grants))
         return grants
@@ -96,6 +99,50 @@ class EUPortalCollector(BaseCollector):
         )
         return filtered
 
+    def _fetch_topic_detail(self, identifier: str) -> str:
+        """Fetch full topic description via the SEDIA search API.
+
+        The bulk grantsTenders.json only has short stub descriptions.
+        The SEDIA API returns ``descriptionByte`` with full HTML content.
+        """
+        url = "https://api.tech.ec.europa.eu/search-api/prod/rest/search"
+        try:
+            resp = requests.post(
+                url,
+                data={
+                    "apiKey": "SEDIA",
+                    "text": f'"{identifier}"',
+                    "pageSize": "30",
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+            resp.raise_for_status()
+            results = resp.json().get("results", [])
+            # Find the English result
+            for r in results:
+                if r.get("language") == "en":
+                    meta = r.get("metadata", {})
+                    # descriptionByte has the full topic description HTML
+                    desc_list = meta.get("descriptionByte", [])
+                    html = desc_list[0] if desc_list else ""
+                    if not html:
+                        # Fallback: destinationDetails
+                        dest_list = meta.get("destinationDetails", [])
+                        html = dest_list[0] if dest_list else ""
+                    # Strip HTML tags and collapse whitespace
+                    text = re.sub(r"<[^>]+>", " ", html)
+                    text = re.sub(r"\s+", " ", text).strip()
+                    logger.debug("[eu] SEDIA description for %s: %d chars", identifier, len(text))
+                    return text
+            logger.debug("[eu] no English result in SEDIA for %s", identifier)
+            return ""
+        except requests.HTTPError as exc:
+            logger.warning("[eu] SEDIA HTTP error for %s: %s", identifier, exc)
+            return ""
+        except Exception as exc:
+            logger.debug("[eu] SEDIA fetch failed for %s: %s", identifier, exc)
+            return ""
+
     def _parse(self, topic: dict) -> Optional[Grant]:
         try:
             # Support new bulk JSON schema (identifier) and legacy test schema (reference)
@@ -122,7 +169,9 @@ class EUPortalCollector(BaseCollector):
             else:
                 full_title = title or call_title
 
-            description = objective or call_title or title
+            # Fetch full description from detail endpoint; fall back to bulk-file fields
+            detail_desc = self._fetch_topic_detail(identifier)
+            description = detail_desc or objective or call_title or title
 
             # Deadline: bulk format uses deadlineDatesLong (ms epoch)
             deadline: Optional[date] = None

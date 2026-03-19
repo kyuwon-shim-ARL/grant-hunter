@@ -1,5 +1,5 @@
 version: 3
-updated: "2026-03-19T09:10:00Z"
+updated: "2026-03-20T10:30:00Z"
 scan_paths:
   - outputs/
 foundations: {}
@@ -469,3 +469,27 @@ experiments:
     milestone: "v2.5 - 품질 강화 + 모니터링"
     hypothesis: "스킬 문서 정정으로 신규 사용자 온보딩 성공률 0%→100%, deadlines에 eligibility 정보 제공"
     critique: "setup 스킬이 존재하지 않는 PyPI 패키지 안내. collect 스킬이 8소스 언급(실제 3소스). deadlines에 eligibility 누락."
+  e055:
+    title: "Pipeline 프로필 연결 버그 수정"
+    status: validated
+    created: "2026-03-19"
+    depends_on: [e015, e004]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "pipeline.py에서 profile 인자를 filter_grants()에 전달하면, 프로필별 스코어링이 실제 적용된다"
+    result: "filter_grants(profile=) 시그니처 추가. pipeline.py 2곳 profile 전달. config.py GRANT_HUNTER_PROFILE 환경변수. report/email 프로필명 표시. 245 tests pass."
+  e056:
+    title: "FP Rate 측정 스캐폴딩 (스크립트 생성)"
+    status: validated
+    created: "2026-03-19"
+    depends_on: [e055, e025]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "필터 통과 grant에서 80건 층화 샘플링 + 라벨 스키마로 FP rate 측정 인프라 구축"
+    result: "extract_filtered_grants.py, sample_for_labeling.py, analyze_fp_labels.py 3개 스크립트 생성. 데이터 부족(6건/tier1=0)으로 80건 샘플링 불가 확인."
+  e059:
+    title: "EU collector description 수집 개선 + 키워드 보강"
+    status: experimental
+    created: "2026-03-20"
+    depends_on: [e031, e018]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "EU collector에서 full description 수집 + 역순 표현 키워드 추가로 필터 통과 grant 수 증가"
+    result: "SEDIA API로 EU description 28-48자→avg 4255자. 역순 키워드 8개 추가(총 86개). 필터 통과 6→8건, tier1 0→1건, EU 1→3건. 245 tests pass."

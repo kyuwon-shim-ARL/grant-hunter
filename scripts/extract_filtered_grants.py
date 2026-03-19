@@ -17,16 +17,24 @@ from grant_hunter.filters import filter_grants, passes_keyword_gate, _count_hits
 
 
 def load_latest_snapshots() -> list[Grant]:
-    """Load grants from all latest snapshot files."""
+    """Load grants from the latest snapshot file per source (not all dates)."""
     grants = []
     if not SNAPSHOTS_DIR.exists():
         print(f"ERROR: Snapshot directory not found: {SNAPSHOTS_DIR}")
         sys.exit(1)
 
-    for snapshot_file in SNAPSHOTS_DIR.glob("*.json"):
+    # Group by source prefix, pick latest file per source
+    source_files: dict[str, Path] = {}
+    for snapshot_file in sorted(SNAPSHOTS_DIR.glob("*.json")):
+        # e.g. nih_20260318.json → source = "nih"
+        source = snapshot_file.stem.rsplit("_", 1)[0]
+        source_files[source] = snapshot_file  # sorted: last = latest
+
+    for source, snapshot_file in source_files.items():
         try:
             with open(snapshot_file, encoding="utf-8") as f:
                 data = json.load(f)
+            print(f"  {source}: {snapshot_file.name} ({len(data)} grants)")
             for item in data:
                 grants.append(Grant.from_dict(item))
         except Exception as e:
