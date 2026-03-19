@@ -18,9 +18,10 @@ from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.eligibility import EligibilityEngine
 from grant_hunter.filters import filter_grants, diff_grants
 from grant_hunter.models import Grant
+from grant_hunter.profiles import get_profile
 from grant_hunter.report_generator import generate_html_report
 from grant_hunter.dashboard import generate_dashboard
-from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR, SNAPSHOTS_DIR, NIH_COLLECTOR_TIMEOUT
+from grant_hunter.config import REPORT_EMAIL, SKIP_EMAIL_ON_FIRST_RUN, LOGS_DIR, SNAPSHOTS_DIR, NIH_COLLECTOR_TIMEOUT, GRANT_HUNTER_PROFILE
 
 logger = logging.getLogger("pipeline")
 _logging_configured = False
@@ -153,6 +154,9 @@ def run_pipeline() -> dict:
     init_data_dirs()
     _setup_logging()
 
+    profile = get_profile(GRANT_HUNTER_PROFILE)
+    logger.info("Using profile: %s (%s)", profile.name, GRANT_HUNTER_PROFILE)
+
     run_start = datetime.utcnow()
     logger.info("=" * 60)
     logger.info("Grant Hunter Pipeline started: %s", run_start.isoformat())
@@ -212,7 +216,7 @@ def run_pipeline() -> dict:
     logger.info("After dedup: %d grants (removed %d duplicates)", len(deduped), len(all_current) - len(deduped))
 
     # ── 3. Keyword filtering ──────────────────────────────────────────────────
-    filtered = filter_grants(deduped)
+    filtered = filter_grants(deduped, profile=profile)
     for src_name in stats:
         src_grants = [g for g in filtered if g.source == src_name]
         stats[src_name]["filtered"] = len(src_grants)
@@ -244,7 +248,7 @@ def run_pipeline() -> dict:
     )
 
     # ── 5. Diff: detect new / changed grants ─────────────────────────────────
-    new_grants, changed_grants = diff_grants(filtered, filter_grants(_dedup(all_previous)))
+    new_grants, changed_grants = diff_grants(filtered, filter_grants(_dedup(all_previous), profile=profile))
     logger.info("New: %d | Changed: %d", len(new_grants), len(changed_grants))
 
     # ── 6. Generate HTML report ───────────────────────────────────────────────
@@ -256,6 +260,7 @@ def run_pipeline() -> dict:
         run_date=run_start,
         eligibility_map=eligibility_map,
         eligibility_reason_map=eligibility_reason_map,
+        profile_name=profile.name,
     )
 
     # ── 7. Generate interactive dashboard ────────────────────────────────────
@@ -276,7 +281,8 @@ def run_pipeline() -> dict:
     else:
         n_new = len(new_grants)
         n_changed = len(changed_grants)
-        subject = f"[Grant Hunter] {n_new} new, {n_changed} changed AMR+AI grants – {run_start.strftime('%Y-%m-%d')}"
+        profile_label = f" [{profile.name}]" if GRANT_HUNTER_PROFILE != "default" else ""
+        subject = f"[Grant Hunter{profile_label}] {n_new} new, {n_changed} changed AMR+AI grants – {run_start.strftime('%Y-%m-%d')}"
         body_text = (
             f"Grant Hunter found {n_new} new and {n_changed} changed grants matching AMR+AI criteria.\n"
             f"Total relevant: {len(filtered)} | Eligible (IPK): {eligible_count} | Uncertain: {uncertain_count}\n\n"
@@ -385,6 +391,18 @@ def _dedup(grants: List[Grant]) -> List[Grant]:
 
 def main():
     """CLI entry point for grant-hunter-run."""
+    import argparse
+    parser = argparse.ArgumentParser(description="Grant Hunter Pipeline")
+    parser.add_argument("--profile", default=None, help="Researcher profile name (default, wetlab_amr, computational, translational, clinical)")
+    args = parser.parse_args()
+
+    if args.profile:
+        import os
+        os.environ["GRANT_HUNTER_PROFILE"] = args.profile
+        # Re-import to pick up the new value
+        import grant_hunter.config
+        grant_hunter.config.GRANT_HUNTER_PROFILE = args.profile
+
     result = run_pipeline()
     sys.exit(0 if result["sources"] else 1)
 

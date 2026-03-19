@@ -14,9 +14,6 @@ from grant_hunter.scoring import RelevanceScorer
 
 logger = logging.getLogger(__name__)
 
-_scorer = RelevanceScorer()
-
-
 def _load_keywords() -> dict:
     if KEYWORDS_FILE.exists():
         with open(KEYWORDS_FILE, encoding="utf-8") as fh:
@@ -92,12 +89,13 @@ def passes_keyword_gate(grant: Grant) -> str:
     return "skip"
 
 
-def filter_grants(grants: List[Grant]) -> List[Grant]:
+def filter_grants(grants: List[Grant], profile=None) -> List[Grant]:
     """Return grants that pass keyword filter, with two tiers.
 
     Tier 1: AMR AND AI keywords present (full relevance score).
     Tier 2: AMR-only (score penalized by 0.5x to rank below Tier 1).
     """
+    scorer = RelevanceScorer(profile)
     result: List[Grant] = []
     tier1_count = 0
     tier2_count = 0
@@ -105,7 +103,7 @@ def filter_grants(grants: List[Grant]) -> List[Grant]:
         tier = passes_keyword_gate(grant)
         if tier == "skip":
             continue
-        grant.relevance_score = _scorer.score(grant)
+        grant.relevance_score = scorer.score(grant)
         if tier == "tier2":
             searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
             drug_hits, _ = _count_hits(searchable, DRUG_KEYWORDS)

@@ -74,6 +74,7 @@ def generate_html_report(
     run_date: Optional[datetime] = None,
     eligibility_map: Optional[dict] = None,
     eligibility_reason_map: Optional[dict] = None,
+    profile_name: Optional[str] = None,
 ) -> Path:
     """Generate HTML report and return its path."""
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -89,7 +90,7 @@ def generate_html_report(
         key=lambda g: g.deadline or date.max,
     )
 
-    html_content = _build_html(highlights, all_filtered, stats, run_dt, new_fps, eligibility_map, eligibility_reason_map)
+    html_content = _build_html(highlights, all_filtered, stats, run_dt, new_fps, eligibility_map, eligibility_reason_map, profile_name)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(html_content)
 
@@ -144,8 +145,10 @@ def _build_html(
     new_fps: Optional[set] = None,
     eligibility_map: Optional[dict] = None,
     eligibility_reason_map: Optional[dict] = None,
+    profile_name: Optional[str] = None,
 ) -> str:
     run_str = run_dt.strftime("%Y-%m-%d %H:%M UTC")
+    profile_str = f" | Profile: <strong>{html.escape(profile_name)}</strong>" if profile_name and profile_name != "Default (Balanced)" else ""
 
     highlight_rows = ""
     for g in highlights:
@@ -213,7 +216,7 @@ def _build_html(
 </head>
 <body>
 <h1>Grant Hunter Report</h1>
-<p class="meta">Generated: {run_str} | AMR + AI keyword filter</p>
+<p class="meta">Generated: {run_str} | AMR + AI keyword filter{profile_str}</p>
 
 <div class="summary-box">
   <div class="kpi"><div class="kpi-num">{len(all_filtered)}</div><div class="kpi-label">Relevant Grants</div></div>
