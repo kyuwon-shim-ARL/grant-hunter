@@ -22,3 +22,28 @@
 - **Issue**: #16
 - **Status**: started
 - **비평 근거**: 898건 flat card grid → 인지 과부하, 분류 축/우선순위 계층 부재
+
+## 2026-03-19: e046 concluded (NO-GO)
+- **결과**: CARB-X NO-GO (1-2건/년, 이전 삭제 이력). JPIAMR NO-GO (한국 비회원국).
+- **Issue**: #33
+
+## 2026-03-19: e052 시작
+- **목표**: Cron 이메일 PATH 수정 + pipeline stderr 로깅
+- **Issue**: #34
+- **Milestone**: v2.5 - 품질 강화 + 모니터링
+- **Status**: started
+- **비평 근거**: 3일간 cron 이메일 전송 0%. $HOME/bin PATH 미포함 + stderr만 로깅
+
+## 2026-03-19: e053 시작
+- **목표**: 모니터링 테스트 격리 (tmp_path) + run_history 재리셋
+- **Issue**: #35
+- **Milestone**: v2.5 - 품질 강화 + 모니터링
+- **Status**: started
+- **비평 근거**: 92% 테스트 오염, e049 리셋 불완전 (근본 원인 미수정)
+
+## 2026-03-19: e054 시작
+- **목표**: 플러그인 스킬 문서 정정 + deadlines eligibility 추가
+- **Issue**: #36
+- **Milestone**: v2.5 - 품질 강화 + 모니터링
+- **Status**: started
+- **비평 근거**: setup 스킬 PyPI 설치 명령 오류, collect 8소스→실제 3소스, deadlines eligibility 누락

@@ -108,7 +108,8 @@ class TestPipelineCollectFilterScoreChain:
              patch("grant_hunter.pipeline.generate_html_report", return_value=tmp_path / "reports" / "report.html"), \
              patch("grant_hunter.pipeline.generate_dashboard", return_value=tmp_path / "reports" / "dashboard.html"), \
              patch("grant_hunter.pipeline.SNAPSHOTS_DIR", config_patches["grant_hunter.pipeline.SNAPSHOTS_DIR"]), \
-             patch("grant_hunter.pipeline.LOGS_DIR", config_patches["grant_hunter.pipeline.LOGS_DIR"]):
+             patch("grant_hunter.pipeline.LOGS_DIR", config_patches["grant_hunter.pipeline.LOGS_DIR"]), \
+             patch("grant_hunter.config.RUN_HISTORY_FILE", config_patches["grant_hunter.config.RUN_HISTORY_FILE"]):
 
             from grant_hunter.pipeline import run_pipeline
             summary = run_pipeline()
@@ -183,7 +184,8 @@ class TestPipelinePartialCollectorFailure:
              patch("grant_hunter.pipeline.generate_html_report", return_value=tmp_path / "reports" / "report.html"), \
              patch("grant_hunter.pipeline.generate_dashboard", return_value=tmp_path / "reports" / "dashboard.html"), \
              patch("grant_hunter.pipeline.SNAPSHOTS_DIR", config_patches["grant_hunter.pipeline.SNAPSHOTS_DIR"]), \
-             patch("grant_hunter.pipeline.LOGS_DIR", config_patches["grant_hunter.pipeline.LOGS_DIR"]):
+             patch("grant_hunter.pipeline.LOGS_DIR", config_patches["grant_hunter.pipeline.LOGS_DIR"]), \
+             patch("grant_hunter.config.RUN_HISTORY_FILE", config_patches["grant_hunter.config.RUN_HISTORY_FILE"]):
 
             from grant_hunter.pipeline import run_pipeline
             summary = run_pipeline()
@@ -252,7 +254,8 @@ class TestPipelineSkipEmailFirstRun:
              patch("grant_hunter.pipeline.generate_dashboard", return_value=tmp_path / "reports" / "dashboard.html"), \
              patch("grant_hunter.pipeline.SKIP_EMAIL_ON_FIRST_RUN", True), \
              patch("grant_hunter.pipeline.SNAPSHOTS_DIR", config_patches["grant_hunter.pipeline.SNAPSHOTS_DIR"]), \
-             patch("grant_hunter.pipeline.LOGS_DIR", config_patches["grant_hunter.pipeline.LOGS_DIR"]):
+             patch("grant_hunter.pipeline.LOGS_DIR", config_patches["grant_hunter.pipeline.LOGS_DIR"]), \
+             patch("grant_hunter.config.RUN_HISTORY_FILE", config_patches["grant_hunter.config.RUN_HISTORY_FILE"]):
 
             from grant_hunter.pipeline import run_pipeline
             summary = run_pipeline()

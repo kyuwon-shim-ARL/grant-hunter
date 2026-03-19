@@ -16,7 +16,7 @@ def _make_mock_response(json_data, status_code=200):
 
 @patch("requests.get")
 @patch("requests.post")
-def test_run_pipeline_completes_without_exception(mock_post, mock_get):
+def test_run_pipeline_completes_without_exception(mock_post, mock_get, tmp_path):
     """Pipeline should complete without raising, even with empty HTTP responses."""
     # NIH POST returns empty results
     nih_response = _make_mock_response({
@@ -45,8 +45,9 @@ def test_run_pipeline_completes_without_exception(mock_post, mock_get):
     mock_get.side_effect = get_side_effect
     mock_post.side_effect = post_side_effect
 
-    from grant_hunter.pipeline import run_pipeline
-    summary = run_pipeline()
+    with patch("grant_hunter.config.RUN_HISTORY_FILE", tmp_path / "run_history.json"):
+        from grant_hunter.pipeline import run_pipeline
+        summary = run_pipeline()
 
     assert isinstance(summary, dict)
     expected_keys = {

@@ -1,6 +1,6 @@
 ---
 name: collect
-description: Run AMR+AI grant collection from all 8 sources (NIH, EU, grants.gov, CARB-X, RIGHT, Gates, Pasteur, Google.org)
+description: Run AMR+AI grant collection from 3 sources (NIH, EU Portal, Grants.gov)
 ---
 
 # Grant Collection

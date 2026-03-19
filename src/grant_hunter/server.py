@@ -500,7 +500,9 @@ def _tool_grant_deadlines(args: dict) -> list:
         return []
 
     from grant_hunter.scoring import RelevanceScorer
+    from grant_hunter.eligibility import EligibilityEngine
     scorer = RelevanceScorer()
+    elig_engine = EligibilityEngine()
 
     upcoming = []
     for g in grants:
@@ -519,12 +521,15 @@ def _tool_grant_deadlines(args: dict) -> list:
             tier = "medium"
         else:
             tier = "low"
+        elig_result = elig_engine.check(g)
         upcoming.append({
             "title": g.title,
             "agency": g.agency,
             "deadline": g.deadline.isoformat(),
             "days_until": days_until,
             "tier": tier,
+            "eligibility": elig_result.status,
+            "eligibility_reason": elig_result.reason,
             "url": g.url,
         })
 

@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+export PATH="$HOME/bin:$PATH"
+
 PROJECT_DIR="/home/kyuwon/projects/grant_hunter"
 LOG_DIR="${HOME}/.grant-hunter/logs"
 DATE=$(date +%Y%m%d)

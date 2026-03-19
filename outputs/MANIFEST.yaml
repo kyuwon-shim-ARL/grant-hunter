@@ -1,5 +1,5 @@
 version: 3
-updated: "2026-03-18T16:30:00Z"
+updated: "2026-03-19T09:10:00Z"
 scan_paths:
   - outputs/
 foundations: {}
@@ -378,7 +378,7 @@ experiments:
     result: "30건 validation_set.json(8high/8med/7low/7irr). validation.py evaluate_scoring(). precision@10>=0.7 달성. rank order correct(high>med>low>irr). 9개 테스트. 242 tests pass."
   e047:
     title: "NIH collector 병렬화 + timeout config 외부화"
-    status: experimental
+    status: validated
     created: "2026-03-18"
     depends_on: [e029, e039]
     milestone: "v2.5 - 품질 강화 + 모니터링"
@@ -386,7 +386,7 @@ experiments:
     critique: "1800s 증가는 band-aid. 근본 해결은 term-level parallelism. 4 workers면 현 600s timeout 내 완료. seen_ids에 threading lock 필요."
   e048:
     title: "이메일 전송 ARG_MAX 수정 (--file 플래그)"
-    status: experimental
+    status: validated
     created: "2026-03-18"
     depends_on: [e040, e027]
     milestone: "v2.5 - 품질 강화 + 모니터링"
@@ -394,7 +394,7 @@ experiments:
     critique: "HTML 5.5MB가 argv로 전달 — ARG_MAX 2MB 초과 224-281%. --file 옵션이 최소 변경(2파일 15줄). stdin 방식보다 안전."
   e049:
     title: "run_history.json 테스트 데이터 정리"
-    status: experimental
+    status: validated
     created: "2026-03-18"
     depends_on: [e042]
     milestone: "v2.5 - 품질 강화 + 모니터링"
@@ -402,7 +402,7 @@ experiments:
     critique: "8개 항목 전부 collected=0. false negative 위험 3-4일간 존재하나 일회성. 파일 삭제로 충분."
   e050:
     title: "Pipeline integration test 3개 추가"
-    status: experimental
+    status: validated
     created: "2026-03-18"
     depends_on: [e010, e042]
     milestone: "v2.5 - 품질 강화 + 모니터링"
@@ -410,7 +410,7 @@ experiments:
     critique: "현 smoke test 1개는 '예외 없이 실행'만 보장. 비즈니스 로직 오류 미감지. mock API 적절."
   e051:
     title: "Orphan 스냅샷 정리 + staleness 필터링"
-    status: experimental
+    status: validated
     created: "2026-03-18"
     depends_on: [e028, e042]
     milestone: "v2.5 - 품질 강화 + 모니터링"
@@ -440,3 +440,32 @@ experiments:
     depends_on: [e028]
     milestone: "v2.6 - 소스 확대"
     hypothesis: "2h time-boxed 조사로 CARB-X/JPIAMR collector 구현 가치 판단"
+    result: "CARB-X NO-GO (1-2건/년, 이전 e003→e028 삭제 이력). JPIAMR NO-GO (한국 비회원국, 대부분 지원 불가)."
+    status: concluded
+  e052:
+    title: "Cron 이메일 PATH 수정 + pipeline stderr 로깅"
+    status: experimental
+    issue: 34
+    created: "2026-03-19"
+    depends_on: [e048, e027]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "run_pipeline.sh PATH 수정 + stderr/stdout 통합 로깅으로 cron 이메일 전송 성공률 0%→100%"
+    critique: "3일간 이메일 0% 전송. cron 환경에서 $HOME/bin 미포함. send-email 에러가 stdout으로 출력되나 pipeline은 stderr만 로깅."
+  e053:
+    title: "모니터링 테스트 격리 (tmp_path) + run_history 재리셋"
+    status: experimental
+    issue: 35
+    created: "2026-03-19"
+    depends_on: [e049, e042]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "tmp_path fixture 적용으로 테스트-프로덕션 격리 100%, 이상탐지 기준선 7일 이내 정상화"
+    critique: "e049 리셋 후에도 92% 테스트 오염 재발. 근본 원인(tmp_path 미사용) 미수정. 테스트 실행마다 재오염."
+  e054:
+    title: "플러그인 스킬 문서 정정 + deadlines eligibility 추가"
+    status: experimental
+    issue: 36
+    created: "2026-03-19"
+    depends_on: [e007, e035]
+    milestone: "v2.5 - 품질 강화 + 모니터링"
+    hypothesis: "스킬 문서 정정으로 신규 사용자 온보딩 성공률 0%→100%, deadlines에 eligibility 정보 제공"
+    critique: "setup 스킬이 존재하지 않는 PyPI 패키지 안내. collect 스킬이 8소스 언급(실제 3소스). deadlines에 eligibility 누락."

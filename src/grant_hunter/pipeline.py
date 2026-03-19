@@ -132,7 +132,9 @@ def _send_email_report(subject: str, body: str, html_path: Path) -> bool:
             logger.info("Email sent to %s", REPORT_EMAIL)
             return True
         else:
-            logger.error("send-email failed: %s", result.stderr)
+            logger.error("send-email failed (stderr): %s", result.stderr)
+            if result.stdout:
+                logger.error("send-email failed (stdout): %s", result.stdout)
             return False
     except FileNotFoundError:
         logger.warning("send-email utility not found in PATH – skipping email")

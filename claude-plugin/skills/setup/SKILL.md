@@ -10,7 +10,7 @@ Guide the user through initial setup of Grant Hunter.
 ## Steps
 
 1. **Check Python MCP server**: Verify `grant-hunter-mcp` is installed
-   - If not: tell user to run `uvx install grant-hunter-mcp` or `pip install grant-hunter-mcp`
+   - If not: tell user to run `uvx --from git+https://github.com/kyuwon-shim-ARL/grant-hunter.git grant-hunter-serve`
 
 2. **Configure email**: Ask the user for their notification email
    - Call MCP tool `grant_config_set` with key="email", value=<user's email>
@@ -26,5 +26,5 @@ Guide the user through initial setup of Grant Hunter.
    - `/grant-hunter:search <query>` to search grants
 
 ## Error Handling
-- If MCP server not available: Guide pip/uvx installation
+- If MCP server not available: Guide installation via `uvx --from git+https://github.com/kyuwon-shim-ARL/grant-hunter.git grant-hunter-serve`
 - If test collection fails: Check network, suggest retry
