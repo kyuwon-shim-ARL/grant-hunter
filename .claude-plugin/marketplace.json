@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "grant-hunter",
+  "description": "AMR+AI Grant auto-collection and monitoring for research institutions",
+  "owner": { "name": "Kyuwon Shim", "email": "kyuwon.shim@ip-korea.org" },
+  "plugins": [
+    {
+      "name": "grant-hunter",
+      "description": "Automated grant discovery from NIH, EU Portal, and Grants.gov with keyword filtering, eligibility scoring, and interactive HTML dashboards",
+      "version": "1.1.0",
+      "author": { "name": "Kyuwon Shim", "email": "kyuwon.shim@ip-korea.org" },
+      "source": "./",
+      "category": "research",
+      "homepage": "https://github.com/kyuwon-shim-ARL/grant-hunter",
+      "tags": ["grant", "amr", "antimicrobial-resistance", "ai", "research-funding", "nih", "eu-portal"]
+    }
+  ],
+  "version": "1.1.0"
+}

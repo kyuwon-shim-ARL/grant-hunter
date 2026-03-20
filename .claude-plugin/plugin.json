@@ -1,0 +1,12 @@
+{
+  "name": "grant-hunter",
+  "version": "1.1.0",
+  "description": "AMR+AI Grant auto-collection system for Institut Pasteur Korea",
+  "author": { "name": "Kyuwon Shim", "email": "kyuwon.shim@ip-korea.org" },
+  "repository": "https://github.com/kyuwon-shim-ARL/grant-hunter",
+  "homepage": "https://github.com/kyuwon-shim-ARL/grant-hunter",
+  "license": "MIT",
+  "keywords": ["claude-code-plugin", "grant", "amr", "ai", "research-funding"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

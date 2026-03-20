@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "grant-hunter": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/kyuwon-shim-ARL/grant-hunter.git", "grant-hunter-serve"],
+      "env": {}
+    }
+  }
+}

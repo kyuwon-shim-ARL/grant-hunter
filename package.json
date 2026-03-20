@@ -1,0 +1,13 @@
+{
+  "name": "grant-hunter",
+  "version": "1.1.0",
+  "description": "Claude Code plugin: AMR+AI Grant auto-collection for IPK",
+  "keywords": ["claude-code-plugin", "grant", "amr", "ai", "research-funding"],
+  "author": "Kyuwon Shim <kyuwon.shim@ip-korea.org>",
+  "license": "MIT",
+  "files": [
+    ".claude-plugin/",
+    ".mcp.json",
+    "skills/"
+  ]
+}
