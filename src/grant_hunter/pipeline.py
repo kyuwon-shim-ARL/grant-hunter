@@ -331,7 +331,7 @@ def run_pipeline() -> dict:
 
     # ── 10.5. Persist run history + anomaly detection ─────────────────────
     try:
-        from grant_hunter.monitoring import save_run_history, check_volume_anomaly, send_anomaly_alert
+        from grant_hunter.monitoring import save_run_history, check_volume_anomaly
         from grant_hunter.config import RUN_HISTORY_FILE
 
         save_run_history(summary, RUN_HISTORY_FILE)
@@ -339,7 +339,6 @@ def run_pipeline() -> dict:
         if anomaly_alerts:
             for alert in anomaly_alerts:
                 logger.warning("ANOMALY: %s", alert)
-            send_anomaly_alert(anomaly_alerts, REPORT_EMAIL)
         summary["anomaly_alerts"] = anomaly_alerts
     except Exception as exc:
         logger.warning("Monitoring failed (non-fatal): %s", exc)
