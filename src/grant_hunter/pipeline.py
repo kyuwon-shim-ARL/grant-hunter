@@ -274,13 +274,15 @@ def run_pipeline() -> dict:
     )
     logger.info("Dashboard: %s", dashboard_path)
 
-    # ── 8. Send email (skip on first-ever run) ────────────────────────────────
+    # ── 8. Send email (skip when nothing new) ───────────────────────────────
     email_sent = False
+    n_new = len(new_grants)
+    n_changed = len(changed_grants)
     if SKIP_EMAIL_ON_FIRST_RUN and is_first_run_any and not all_previous:
         logger.info("Skipping email on baseline (first) run")
+    elif n_new == 0 and n_changed == 0:
+        logger.info("Skipping email: 0 new, 0 changed grants")
     else:
-        n_new = len(new_grants)
-        n_changed = len(changed_grants)
         profile_label = f" [{profile.name}]" if GRANT_HUNTER_PROFILE != "default" else ""
         subject = f"[Grant Hunter{profile_label}] {n_new} new, {n_changed} changed AMR+AI grants – {run_start.strftime('%Y-%m-%d')}"
         body_text = (
