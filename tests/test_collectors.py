@@ -2,6 +2,7 @@
 
 import pytest
 from datetime import datetime
+from unittest.mock import patch, MagicMock
 from grant_hunter.collectors.nih import NIHCollector
 from grant_hunter.collectors.eu_portal import EUPortalCollector
 from grant_hunter.collectors.grants_gov import GrantsGovCollector
@@ -65,6 +66,77 @@ def test_eu_parse_returns_none_without_identifier():
     collector = EUPortalCollector()
     grant = collector._parse({"title": "No identifier item"})
     assert grant is None
+
+
+def test_eu_fetch_topic_detail_success():
+    """SEDIA API returns English result with descriptionByte HTML."""
+    collector = EUPortalCollector()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "results": [
+            {
+                "language": "en",
+                "metadata": {
+                    "descriptionByte": [
+                        "<p>This topic aims to develop <b>novel antimicrobial</b> strategies.</p>"
+                    ]
+                },
+            }
+        ]
+    }
+    with patch("grant_hunter.collectors.eu_portal.requests.post", return_value=mock_resp) as mock_post:
+        result = collector._fetch_topic_detail("HORIZON-HLTH-2026-AMR-01")
+        mock_post.assert_called_once()
+        assert "novel antimicrobial" in result
+        assert "<p>" not in result  # HTML stripped
+
+
+def test_eu_fetch_topic_detail_empty_response():
+    """SEDIA API returns no English results — should return empty string."""
+    collector = EUPortalCollector()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"results": []}
+    with patch("grant_hunter.collectors.eu_portal.requests.post", return_value=mock_resp):
+        result = collector._fetch_topic_detail("NONEXISTENT-TOPIC")
+        assert result == ""
+
+
+def test_eu_fetch_topic_detail_api_error():
+    """SEDIA API HTTP error — should return empty string, not raise."""
+    collector = EUPortalCollector()
+    import requests as req
+    with patch(
+        "grant_hunter.collectors.eu_portal.requests.post",
+        side_effect=req.HTTPError("503 Service Unavailable"),
+    ):
+        result = collector._fetch_topic_detail("HORIZON-HLTH-2026-AMR-01")
+        assert result == ""
+
+
+def test_eu_fetch_topic_detail_fallback_to_destination():
+    """SEDIA returns descriptionByte=[] but has destinationDetails — should use fallback."""
+    collector = EUPortalCollector()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "results": [
+            {
+                "language": "en",
+                "metadata": {
+                    "descriptionByte": [],
+                    "destinationDetails": [
+                        "<div>Fallback destination detail for AMR research</div>"
+                    ],
+                },
+            }
+        ]
+    }
+    with patch("grant_hunter.collectors.eu_portal.requests.post", return_value=mock_resp):
+        result = collector._fetch_topic_detail("HORIZON-HLTH-2026-AMR-01")
+        assert "Fallback destination detail" in result
+        assert "<div>" not in result
 
 
 # ── Grants.gov ────────────────────────────────────────────────────────────────

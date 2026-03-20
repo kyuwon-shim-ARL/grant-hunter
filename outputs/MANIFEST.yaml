@@ -434,17 +434,16 @@ experiments:
     hypothesis: "Wellcome Trust 경량 모니터로 연간 2-8건 고가치 AMR open call 포착"
   e046:
     title: "CARB-X/JPIAMR 타당성 조사 (go/no-go)"
-    status: experimental
+    status: concluded
     issue: 33
     created: "2026-03-18"
     depends_on: [e028]
     milestone: "v2.6 - 소스 확대"
     hypothesis: "2h time-boxed 조사로 CARB-X/JPIAMR collector 구현 가치 판단"
     result: "CARB-X NO-GO (1-2건/년, 이전 e003→e028 삭제 이력). JPIAMR NO-GO (한국 비회원국, 대부분 지원 불가)."
-    status: concluded
   e052:
     title: "Cron 이메일 PATH 수정 + pipeline stderr 로깅"
-    status: experimental
+    status: validated
     issue: 34
     created: "2026-03-19"
     depends_on: [e048, e027]
@@ -453,7 +452,7 @@ experiments:
     critique: "3일간 이메일 0% 전송. cron 환경에서 $HOME/bin 미포함. send-email 에러가 stdout으로 출력되나 pipeline은 stderr만 로깅."
   e053:
     title: "모니터링 테스트 격리 (tmp_path) + run_history 재리셋"
-    status: experimental
+    status: validated
     issue: 35
     created: "2026-03-19"
     depends_on: [e049, e042]
@@ -462,7 +461,7 @@ experiments:
     critique: "e049 리셋 후에도 92% 테스트 오염 재발. 근본 원인(tmp_path 미사용) 미수정. 테스트 실행마다 재오염."
   e054:
     title: "플러그인 스킬 문서 정정 + deadlines eligibility 추가"
-    status: experimental
+    status: validated
     issue: 36
     created: "2026-03-19"
     depends_on: [e007, e035]
@@ -487,7 +486,7 @@ experiments:
     result: "extract_filtered_grants.py, sample_for_labeling.py, analyze_fp_labels.py 3개 스크립트 생성. 데이터 부족(6건/tier1=0)으로 80건 샘플링 불가 확인."
   e059:
     title: "EU collector description 수집 개선 + 키워드 보강"
-    status: experimental
+    status: validated
     created: "2026-03-20"
     depends_on: [e031, e018]
     milestone: "v2.5 - 품질 강화 + 모니터링"
