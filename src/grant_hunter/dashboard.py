@@ -153,7 +153,8 @@ def _build_calendar(grants: List[Grant]) -> str:
 
 # ── Table rows ────────────────────────────────────────────────────────────────
 
-def _grant_to_json_row(g: Grant, eligibility: str, elig_reason: str, norm_score: float) -> dict:
+def _grant_to_json_row(g: Grant, eligibility: str, elig_reason: str, norm_score: float,
+                       breakdown: dict | None = None) -> dict:
     amount = g.amount_max or g.amount_min
     return {
         "id": _esc(g.id),
@@ -170,6 +171,10 @@ def _grant_to_json_row(g: Grant, eligibility: str, elig_reason: str, norm_score:
         "eligibility": eligibility,
         "elig_reason": _esc(elig_reason),
         "desc": _esc((g.description or "")[:200]),
+        "desc_full": _esc(g.description or ""),
+        "duration": g.duration_months,
+        "keywords": [_esc(k) for k in (g.keywords or [])],
+        "breakdown": breakdown or {},
     }
 
 
@@ -199,6 +204,8 @@ def generate_dashboard(
     total_collected = sum(s.get("collected", 0) for s in stats.values())
 
     # Build JSON data for JS table
+    from grant_hunter.scoring import RelevanceScorer
+    scorer = RelevanceScorer()
     rows = []
     for g in all_filtered:
         fp = g.fingerprint()
@@ -207,6 +214,7 @@ def generate_dashboard(
             eligibility_map.get(fp, "uncertain"),
             eligibility_reason_map.get(fp, ""),
             score_map.get(fp, 0.0),
+            breakdown=scorer.score_breakdown(g),
         ))
 
     rows_json = json.dumps(rows, ensure_ascii=False)
@@ -351,6 +359,68 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
 }}
 #row-count {{ font-size: 0.82em; color: #888; margin-bottom: 8px; }}
 
+/* ── Checkbox & Action Bar ── */
+.cb-col {{ width: 36px; text-align: center; }}
+.action-bar {{
+  display: none; align-items: center; gap: 12px;
+  background: #1a1a2e; color: white; padding: 10px 16px;
+  border-radius: 8px; margin-bottom: 12px; font-size: 0.88em;
+}}
+.action-bar.visible {{ display: flex; }}
+.action-bar span {{ font-weight: 600; }}
+.action-bar button {{
+  background: white; color: #1a1a2e; border: none;
+  padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  font-size: 0.85em; font-weight: 600;
+}}
+.action-bar button:hover {{ background: #e3f2fd; }}
+
+/* ── Detail Row ── */
+.detail-row td {{ background: #fafbff; padding: 16px 20px; border-bottom: 2px solid #dde; }}
+.detail-content {{ display: flex; gap: 24px; flex-wrap: wrap; }}
+.detail-main {{ flex: 2; min-width: 300px; }}
+.detail-side {{ flex: 1; min-width: 220px; }}
+.detail-desc {{ color: #444; line-height: 1.6; margin-bottom: 12px; font-size: 0.9em; max-height: 200px; overflow-y: auto; }}
+.detail-meta {{ display: flex; flex-direction: column; gap: 4px; }}
+.detail-meta-item {{ display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 0.85em; }}
+.detail-meta-item .lbl {{ color: #888; }}
+.detail-meta-item .val {{ font-weight: 600; text-align: right; max-width: 60%; }}
+
+/* ── Score Breakdown ── */
+.breakdown-bar {{ display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; }}
+.breakdown-seg {{ height: 100%; }}
+.breakdown-legend {{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }}
+.breakdown-legend span {{ font-size: 0.75em; display: flex; align-items: center; gap: 4px; }}
+.breakdown-dot {{ width: 8px; height: 8px; border-radius: 50%; display: inline-block; }}
+
+/* ── Keywords ── */
+.kw-tag {{
+  display: inline-block; background: #e8eaf6; color: #283593;
+  padding: 2px 8px; border-radius: 10px; font-size: 0.72em; margin: 2px;
+}}
+
+/* ── External Link Icon ── */
+.ext-icon {{ font-size: 0.75em; margin-left: 3px; opacity: 0.4; }}
+a:hover .ext-icon {{ opacity: 1; }}
+
+/* ── Calendar Buttons ── */
+.cal-btns {{ margin-top: 8px; display: flex; gap: 6px; }}
+.cal-btn {{
+  display: inline-block; padding: 4px 10px; border-radius: 4px;
+  font-size: 0.78em; cursor: pointer; text-decoration: none;
+  background: #1a73e8; color: white; border: none; font-weight: 500;
+}}
+.cal-btn:hover {{ background: #1557b0; color: white; text-decoration: none; }}
+.cal-btn.gcal {{ background: #34a853; }}
+.cal-btn.gcal:hover {{ background: #2d8e47; }}
+
+/* ── Detail Toggle ── */
+.detail-toggle {{
+  font-size: 0.75em; color: #1a73e8; cursor: pointer; text-decoration: none;
+  display: inline-block; margin-top: 3px;
+}}
+.detail-toggle:hover {{ text-decoration: underline; }}
+
 /* ── Print ── */
 @media print {{
   .filters, header {{ display: none; }}
@@ -433,12 +503,20 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
     </div>
   </div>
 
+  <div class="action-bar" id="action-bar">
+    <span id="selected-count">0 selected</span>
+    <button onclick="window._gh.exportICS()">Download .ics</button>
+    <button onclick="window._gh.exportGCal()">Open in Google Calendar</button>
+    <button onclick="window._gh.clearSelection()">Clear</button>
+  </div>
+
   <div id="row-count"></div>
 
   <div id="grants-table-wrap">
     <table id="grants-table">
       <thead>
         <tr>
+          <th class="cb-col"><input type="checkbox" id="select-all" title="Select all"></th>
           <th data-col="title">Title</th>
           <th data-col="agency">Agency / Source</th>
           <th data-col="deadline_sort">Deadline</th>
@@ -461,10 +539,13 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
 <script>
 (function() {{
   var DATA = {rows_json};
+  var dataById = {{}};
+  DATA.forEach(function(r) {{ dataById[r.id] = r; }});
 
-  // Sort state
+  var selected = {{}};
+  var expandedId = null;
   var sortCol = 'score';
-  var sortDir = -1; // -1 = desc, 1 = asc
+  var sortDir = -1;
 
   function getVal(row, col) {{
     if (col === 'deadline_sort') return row.days_until === null ? 99999 : row.days_until;
@@ -516,13 +597,135 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
     return '<td class="td-score">' + score + bar + '</td>';
   }}
 
+  /* ── Score Breakdown ── */
+  function breakdownHTML(bd) {{
+    if (!bd || !bd.total) return '<div style="color:#aaa;font-size:0.8em">No score data</div>';
+    var cats = [
+      {{key:'amr',label:'AMR',color:'#e53935'}},
+      {{key:'ai',label:'AI',color:'#1e88e5'}},
+      {{key:'drug',label:'Drug Discovery',color:'#43a047'}},
+      {{key:'amount_bonus',label:'Amount Bonus',color:'#fb8c00'}}
+    ];
+    var bar = '<div class="breakdown-bar">';
+    var legend = '<div class="breakdown-legend">';
+    cats.forEach(function(c) {{
+      var v = (bd[c.key] || 0) * 100;
+      if (v > 0) {{
+        bar += '<div class="breakdown-seg" style="width:' + Math.max(v, 4) + '%;background:' + c.color + '" title="' + c.label + ': ' + v.toFixed(0) + '%"></div>';
+        legend += '<span><span class="breakdown-dot" style="background:' + c.color + '"></span>' + c.label + ' ' + v.toFixed(0) + '%</span>';
+      }}
+    }});
+    bar += '</div>';
+    legend += '</div>';
+    return bar + legend;
+  }}
+
+  function keywordsHTML(kws) {{
+    if (!kws || !kws.length) return '';
+    return kws.slice(0, 10).map(function(k) {{ return '<span class="kw-tag">' + k + '</span>'; }}).join('');
+  }}
+
+  /* ── Detail Row ── */
+  function detailRow(r) {{
+    var dur = r.duration ? r.duration + ' months' : 'N/A';
+    var calBtns = '';
+    if (r.deadline) {{
+      var dt = r.deadline.replace(/-/g, '');
+      var nd = new Date(r.deadline + 'T00:00:00');
+      nd.setDate(nd.getDate() + 1);
+      var y = nd.getFullYear(), m = ('0'+(nd.getMonth()+1)).slice(-2), d = ('0'+nd.getDate()).slice(-2);
+      var dtEnd = y + m + d;
+      var gcalUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+        + '&text=' + encodeURIComponent('Grant Deadline: ' + r.title)
+        + '&dates=' + dt + '/' + dtEnd
+        + '&details=' + encodeURIComponent('Agency: ' + r.agency + '\\nAmount: ' + r.amount_label + '\\nEligibility: ' + r.eligibility + '\\n\\n' + r.url);
+      calBtns = '<div class="cal-btns">'
+        + '<a class="cal-btn gcal" href="' + gcalUrl + '" target="_blank">Add to Google Calendar</a>'
+        + '<button class="cal-btn" onclick="window._gh.exportICSOne(\\'' + r.id.replace(/'/g, "\\\\'") + '\\')">Download .ics</button>'
+        + '</div>';
+    }}
+    return '<tr class="detail-row"><td></td><td colspan="6">'
+      + '<div class="detail-content">'
+      + '<div class="detail-main">'
+        + '<div class="detail-desc">' + (r.desc_full || r.desc || 'No description available.') + '</div>'
+        + (r.keywords && r.keywords.length ? '<div style="margin-bottom:10px"><strong style="font-size:0.8em;color:#888">Matched Keywords</strong><br>' + keywordsHTML(r.keywords) + '</div>' : '')
+        + '<div><strong style="font-size:0.8em;color:#888">Why Recommended (Score Breakdown)</strong>' + breakdownHTML(r.breakdown) + '</div>'
+      + '</div>'
+      + '<div class="detail-side">'
+        + '<div class="detail-meta">'
+          + '<div class="detail-meta-item"><span class="lbl">Agency</span><span class="val">' + r.agency + '</span></div>'
+          + '<div class="detail-meta-item"><span class="lbl">Source</span><span class="val">' + r.source + '</span></div>'
+          + '<div class="detail-meta-item"><span class="lbl">Deadline</span><span class="val">' + r.deadline_label + '</span></div>'
+          + '<div class="detail-meta-item"><span class="lbl">Amount</span><span class="val">' + r.amount_label + '</span></div>'
+          + '<div class="detail-meta-item"><span class="lbl">Duration</span><span class="val">' + dur + '</span></div>'
+          + '<div class="detail-meta-item"><span class="lbl">Eligibility</span><span class="val">' + eligBadge(r.eligibility, r.elig_reason) + '</span></div>'
+        + '</div>'
+        + calBtns
+        + '<div style="margin-top:12px"><a href="' + r.url + '" target="_blank" style="font-weight:600;font-size:0.9em">View Original Listing &#8599;</a></div>'
+      + '</div>'
+      + '</div></td></tr>';
+  }}
+
+  /* ── Action Bar ── */
+  function updateActionBar() {{
+    var cnt = Object.keys(selected).length;
+    var bar = document.getElementById('action-bar');
+    if (cnt > 0) {{
+      bar.classList.add('visible');
+      document.getElementById('selected-count').textContent = cnt + ' selected';
+    }} else {{
+      bar.classList.remove('visible');
+    }}
+  }}
+
+  function updateSelectAll() {{
+    var cbs = document.querySelectorAll('.row-cb');
+    var all = cbs.length > 0 && Array.from(cbs).every(function(c) {{ return c.checked; }});
+    document.getElementById('select-all').checked = all;
+  }}
+
+  /* ── ICS Generation ── */
+  function makeICS(grants) {{
+    var lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//GrantHunter//EN','CALSCALE:GREGORIAN'];
+    grants.forEach(function(g) {{
+      if (!g.deadline) return;
+      var dt = g.deadline.replace(/-/g, '');
+      var nd = new Date(g.deadline + 'T00:00:00');
+      nd.setDate(nd.getDate() + 1);
+      var y = nd.getFullYear(), m = ('0'+(nd.getMonth()+1)).slice(-2), d = ('0'+nd.getDate()).slice(-2);
+      lines.push('BEGIN:VEVENT');
+      lines.push('DTSTART;VALUE=DATE:' + dt);
+      lines.push('DTEND;VALUE=DATE:' + y + m + d);
+      lines.push('SUMMARY:Grant Deadline: ' + g.title.substring(0, 75));
+      lines.push('DESCRIPTION:Agency: ' + g.agency + '\\nAmount: ' + g.amount_label + '\\nEligibility: ' + g.eligibility + '\\n' + g.url);
+      lines.push('URL:' + g.url);
+      lines.push('END:VEVENT');
+    }});
+    lines.push('END:VCALENDAR');
+    return lines.join('\\r\\n');
+  }}
+
+  function downloadFile(content, filename, mime) {{
+    var blob = new Blob([content], {{type: mime}});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }}
+
+  /* ── Render ── */
   function renderRows(rows) {{
     var tbody = document.getElementById('table-body');
     var html = '';
     rows.forEach(function(r) {{
-      html += '<tr>';
-      html += '<td class="td-title"><a href="' + r.url + '" target="_blank">' + r.title + '</a>';
-      if (r.desc) html += '<div class="td-desc">' + r.desc + '…</div>';
+      var ck = selected[r.id] ? ' checked' : '';
+      var arrow = expandedId === r.id ? '&#9660;' : '&#9654;';
+      html += '<tr' + (expandedId === r.id ? ' style="background:#f0f2ff"' : '') + '>';
+      html += '<td class="cb-col"><input type="checkbox" class="row-cb" data-id="' + r.id + '"' + ck + '></td>';
+      html += '<td class="td-title"><a href="' + r.url + '" target="_blank">' + r.title + '<span class="ext-icon">&#8599;</span></a>';
+      if (r.desc) html += '<div class="td-desc">' + r.desc + '</div>';
+      html += '<a href="#" class="detail-toggle" data-id="' + r.id + '">' + arrow + ' Details</a>';
       html += '</td>';
       html += '<td class="td-agency">' + r.agency + '<br><span class="src-badge">' + r.source + '</span></td>';
       html += deadlineCell(r);
@@ -530,9 +733,29 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
       html += scoreCell(r.score);
       html += '<td class="td-eligibility">' + eligBadge(r.eligibility, r.elig_reason) + '</td>';
       html += '</tr>';
+      if (expandedId === r.id) html += detailRow(r);
     }});
     tbody.innerHTML = html;
     document.getElementById('row-count').textContent = rows.length + ' grants shown';
+
+    // Bind detail toggles
+    tbody.querySelectorAll('.detail-toggle').forEach(function(a) {{
+      a.addEventListener('click', function(e) {{
+        e.preventDefault();
+        expandedId = expandedId === a.dataset.id ? null : a.dataset.id;
+        sortAndRender();
+      }});
+    }});
+
+    // Bind row checkboxes
+    tbody.querySelectorAll('.row-cb').forEach(function(cb) {{
+      cb.addEventListener('change', function() {{
+        if (cb.checked) {{ selected[cb.dataset.id] = true; }}
+        else {{ delete selected[cb.dataset.id]; }}
+        updateActionBar();
+        updateSelectAll();
+      }});
+    }});
   }}
 
   function sortAndRender() {{
@@ -545,7 +768,6 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
       return 0;
     }});
     renderRows(rows);
-    // Update header classes
     document.querySelectorAll('thead th').forEach(function(th) {{
       th.classList.remove('sorted-asc', 'sorted-desc');
       if (th.dataset.col === sortCol) {{
@@ -558,14 +780,21 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
   document.querySelectorAll('thead th[data-col]').forEach(function(th) {{
     th.addEventListener('click', function() {{
       var col = th.dataset.col;
-      if (sortCol === col) {{
-        sortDir = -sortDir;
-      }} else {{
-        sortCol = col;
-        sortDir = -1;
-      }}
+      if (sortCol === col) {{ sortDir = -sortDir; }}
+      else {{ sortCol = col; sortDir = -1; }}
       sortAndRender();
     }});
+  }});
+
+  // Select-all checkbox
+  document.getElementById('select-all').addEventListener('change', function() {{
+    var checked = this.checked;
+    document.querySelectorAll('.row-cb').forEach(function(cb) {{
+      cb.checked = checked;
+      if (checked) {{ selected[cb.dataset.id] = true; }}
+      else {{ delete selected[cb.dataset.id]; }}
+    }});
+    updateActionBar();
   }});
 
   // Filter change
@@ -573,6 +802,45 @@ td {{ padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }}
     el.addEventListener('change', sortAndRender);
   }});
   document.getElementById('search-box').addEventListener('input', sortAndRender);
+
+  // Expose global API for action bar buttons
+  window._gh = {{
+    exportICS: function() {{
+      var grants = Object.keys(selected).map(function(id) {{ return dataById[id]; }}).filter(function(g) {{ return g && g.deadline; }});
+      if (!grants.length) {{ alert('No grants with deadlines selected.'); return; }}
+      downloadFile(makeICS(grants), 'grant_deadlines.ics', 'text/calendar');
+    }},
+    exportGCal: function() {{
+      var grants = Object.keys(selected).map(function(id) {{ return dataById[id]; }}).filter(function(g) {{ return g && g.deadline; }});
+      if (!grants.length) {{ alert('No grants with deadlines selected.'); return; }}
+      if (grants.length === 1) {{
+        var g = grants[0];
+        var dt = g.deadline.replace(/-/g, '');
+        var nd = new Date(g.deadline + 'T00:00:00');
+        nd.setDate(nd.getDate() + 1);
+        var y = nd.getFullYear(), m = ('0'+(nd.getMonth()+1)).slice(-2), d = ('0'+nd.getDate()).slice(-2);
+        var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+          + '&text=' + encodeURIComponent('Grant Deadline: ' + g.title)
+          + '&dates=' + dt + '/' + y + m + d
+          + '&details=' + encodeURIComponent('Agency: ' + g.agency + '\\nAmount: ' + g.amount_label + '\\n' + g.url);
+        window.open(url, '_blank');
+      }} else {{
+        downloadFile(makeICS(grants), 'grant_deadlines.ics', 'text/calendar');
+        alert('Downloaded .ics file with ' + grants.length + ' events. Import it into Google Calendar (Settings > Import).');
+      }}
+    }},
+    exportICSOne: function(id) {{
+      var g = dataById[id];
+      if (!g || !g.deadline) return;
+      downloadFile(makeICS([g]), 'grant_' + id.substring(0, 20) + '.ics', 'text/calendar');
+    }},
+    clearSelection: function() {{
+      selected = {{}};
+      document.querySelectorAll('.row-cb').forEach(function(cb) {{ cb.checked = false; }});
+      document.getElementById('select-all').checked = false;
+      updateActionBar();
+    }}
+  }};
 
   // Initial render
   sortAndRender();
