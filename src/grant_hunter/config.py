@@ -3,8 +3,9 @@
 import os
 from pathlib import Path
 
-# Data directory: ~/.grant-hunter/ by default, overridable via env var
-DATA_HOME = Path(os.environ.get("GRANT_HUNTER_DATA_DIR", Path.home() / ".grant-hunter"))
+# Data directory: <project>/data/ by default, overridable via env var
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_HOME = Path(os.environ.get("GRANT_HUNTER_DATA_DIR", _PROJECT_ROOT / "data"))
 
 # Package data (shipped with package)
 _PKG_DIR = Path(__file__).parent
