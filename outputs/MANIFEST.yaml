@@ -417,21 +417,23 @@ experiments:
     hypothesis: "orphan 4개 삭제 + check_staleness() active collector 필터로 stale 목록 오염 방지"
     critique: "삭제만으로 불충분. check_staleness()가 *.json glob — 20h 후 orphan이 stale 보고에 등장. 1줄 필터링 수정 필요."
   e044:
-    title: "BARDA 키워드 확장 + SAM.gov collector"
-    status: experimental
+    title: "BARDA 키워드 확장 (SAM.gov collector NO-GO)"
+    status: validated
     issue: 31
     created: "2026-03-18"
     depends_on: [e017, e025]
     milestone: "v2.6 - 소스 확대"
-    hypothesis: "SAM.gov API collector + BARDA 키워드 확장으로 필터 통과 grant 수 +10-30건"
+    hypothesis: "BARDA/biodefense 키워드 7개 추가로 Grants.gov에서 BARDA 관련 공고 recall 향상"
+    result: "SAM.gov은 Grants.gov와 동일 연방 공고 중복으로 NO-GO. BARDA 키워드 7개(BARDA, biodefense, medical countermeasure, pandemic preparedness, CBRN, PHEMCE, broad-spectrum antimicrobial) 추가. AMR 키워드 86→93개. 249 tests pass."
   e045:
-    title: "Wellcome Trust 경량 모니터"
-    status: experimental
+    title: "Wellcome Trust 경량 모니터 (NO-GO)"
+    status: concluded
     issue: 32
     created: "2026-03-18"
     depends_on: [e041]
     milestone: "v2.6 - 소스 확대"
     hypothesis: "Wellcome Trust 경량 모니터로 연간 2-8건 고가치 AMR open call 포착"
+    result: "NO-GO. 4축 부정적: (1) AMR 단독 open call 2018년 이후 0건, 파트너십 모델로 전환, (2) 한국 PI 지원 불가(고소득국 제외), (3) JS 사이트 크롤링 필요(Playwright급), (4) ROI 음수. 대안: AMR.Solutions 피드 또는 Wellcome 뉴스레터 구독."
   e046:
     title: "CARB-X/JPIAMR 타당성 조사 (go/no-go)"
     status: concluded
