@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grant Hunter — MECE Funding Intelligence Report</title>
+<style>
+/* ─────────────────────────────────────────
+   DESIGN TOKENS
+───────────────────────────────────────── */
+:root {
+  --navy:        #1a237e;
+  --navy-dark:   #0d1654;
+  --navy-mid:    #283593;
+  --navy-light:  #3949ab;
+  --teal:        #00897b;
+  --teal-light:  #4db6ac;
+  --teal-dark:   #00695c;
+  --bg:          #f0f2f8;
+  --surface:     #ffffff;
+  --surface2:    #f5f6fa;
+  --border:      #e0e4f0;
+  --border-soft: #eef0f8;
+  --text:        #1c2340;
+  --text-muted:  #64748b;
+  --text-light:  #94a3b8;
+  --text-est:    #8896b0;
+
+  /* Urgency */
+  --urgent:      #c62828;
+  --urgent-bg:   #ffebee;
+  --urgent-soft: rgba(198,40,40,.12);
+  --hot:         #e65100;
+  --hot-bg:      #fff3e0;
+  --hot-soft:    rgba(230,81,0,.12);
+  --warn:        #f9a825;
+  --warn-bg:     #fffde7;
+  --warn-soft:   rgba(249,168,37,.12);
+  --safe:        #2e7d32;
+  --safe-bg:     #e8f5e9;
+  --safe-soft:   rgba(46,125,50,.1);
+
+  /* Tiers */
+  --t1:          #c62828;
+  --t1-bg:       #fff5f5;
+  --t1-border:   #ffcdd2;
+  --t2:          #1565c0;
+  --t2-bg:       #f0f6ff;
+  --t2-border:   #bbdefb;
+  --t3:          #558b2f;
+  --t3-bg:       #f1f8e9;
+  --t3-border:   #dcedc8;
+
+  --radius:      10px;
+  --radius-sm:   6px;
+  --radius-xs:   4px;
+  --shadow:      0 2px 10px rgba(26,35,126,.07);
+  --shadow-md:   0 4px 20px rgba(26,35,126,.11);
+  --shadow-lg:   0 8px 32px rgba(26,35,126,.15);
+  --trans:       .17s cubic-bezier(.4,0,.2,1);
+
+  /* Typography — using proven web-safe with character */
+  --font:        'Georgia', 'Noto Serif KR', 'Noto Sans KR', system-ui, sans-serif;
+  --font-ui:     -apple-system, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  --font-mono:   'Courier New', 'Fira Code', monospace;
+}
+
+/* ─────────────────────────────────────────
+   RESET & BASE
+───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────
+   HEADER
+───────────────────────────────────────── */
+.site-header {
+  background:
+    linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-mid) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.site-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 55% 90% at 85% 40%, rgba(0,137,123,.2) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 50% at 10% 90%, rgba(77,182,172,.1) 0%, transparent 55%);
+  pointer-events: none;
+}
+/* Geometric accent lines */
+.site-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--teal-light) 30%,
+    var(--teal) 50%,
+    var(--teal-light) 70%,
+    transparent 100%);
+}
+.header-body {
+  position: relative;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 2.4rem 2rem 2rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.header-left { display: flex; align-items: center; gap: 1.1rem; }
+.header-icon {
+  width: 50px; height: 50px; flex-shrink: 0;
+  background: linear-gradient(140deg, var(--teal-dark), var(--teal-light));
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 18px rgba(0,137,123,.45);
+}
+.header-text {}
+.header-eyebrow {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--teal-light);
+  margin-bottom: .3rem;
+}
+.header-h1 {
+  font-family: var(--font);
+  font-size: clamp(1.3rem, 2.8vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  color: #fff;
+  line-height: 1.15;
+}
+.header-h1 em { color: var(--teal-light); font-style: normal; }
+.header-sub {
+  font-size: .8rem;
+  color: rgba(255,255,255,.55);
+  margin-top: .35rem;
+  letter-spacing: .01em;
+}
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .5rem;
+}
+.header-badge {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.18);
+  backdrop-filter: blur(8px);
+  color: rgba(255,255,255,.88);
+  font-size: .75rem;
+  padding: .35rem .85rem;
+  border-radius: 100px;
+  letter-spacing: .02em;
+}
+.header-date {
+  font-size: .72rem;
+  color: rgba(255,255,255,.42);
+  letter-spacing: .04em;
+}
+
+/* ─────────────────────────────────────────
+   PAGE WRAPPER
+───────────────────────────────────────── */
+.page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 1.75rem 2rem 4rem;
+}
+@media (max-width: 768px) {
+  .page { padding: 1.25rem 1rem 3rem; }
+}
+
+/* ─────────────────────────────────────────
+   SECTION LABELS
+───────────────────────────────────────── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+.section-label-text {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.section-label-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─────────────────────────────────────────
+   KPI ROW
+───────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: .875rem;
+  margin-bottom: 1.75rem;
+}
+@media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.3rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+}
+.kpi-card.kpi-total::before     { background: var(--navy-light); }
+.kpi-card.kpi-t1::before        { background: var(--t1); }
+.kpi-card.kpi-t2::before        { background: var(--t2); }
+.kpi-card.kpi-t3::before        { background: var(--t3); }
+.kpi-card.kpi-urgent::before    { background: var(--urgent); }
+
+.kpi-label {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: .45rem;
+}
+.kpi-value {
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1;
+  color: var(--text);
+}
+.kpi-card.kpi-t1 .kpi-value     { color: var(--t1); }
+.kpi-card.kpi-t2 .kpi-value     { color: var(--t2); }
+.kpi-card.kpi-t3 .kpi-value     { color: var(--t3); }
+.kpi-card.kpi-urgent .kpi-value { color: var(--urgent); }
+
+.kpi-sub {
+  font-size: .72rem;
+  color: var(--text-muted);
+  margin-top: .35rem;
+}
+.kpi-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-top: .5rem;
+}
+.kpi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  font-size: .65rem;
+  font-weight: 600;
+  padding: .18rem .5rem;
+  border-radius: 100px;
+}
+.pill-red    { background: var(--urgent-bg); color: var(--urgent); }
+.pill-orange { background: var(--hot-bg);    color: var(--hot); }
+.pill-yellow { background: var(--warn-bg);   color: #b7801a; }
+.pill-green  { background: var(--safe-bg);   color: var(--safe); }
+
+/* Mini bar in KPI */
+.kpi-bar-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: .6rem;
+  overflow: hidden;
+}
+.kpi-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .5s ease;
+}
+
+/* ─────────────────────────────────────────
+   TWO-COLUMN LAYOUT
+───────────────────────────────────────── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ─────────────────────────────────────────
+   CARD BASE
+───────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.card-title-icon {
+  width: 22px; height: 22px;
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .85rem;
+}
+
+/* ─────────────────────────────────────────
+   URGENCY BAR CHART
+───────────────────────────────────────── */
+.urgency-bars { display: flex; flex-direction: column; gap: .6rem; }
+.urgency-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 32px;
+  align-items: center;
+  gap: .65rem;
+}
+.urgency-label {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.urgency-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.urgency-track {
+  height: 9px;
+  background: var(--surface2);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+.urgency-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width .6s cubic-bezier(.4,0,.2,1);
+}
+.urgency-count {
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ─────────────────────────────────────────
+   MECE HEATMAP MATRIX
+───────────────────────────────────────── */
+.mece-outer { overflow-x: auto; }
+.mece-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: .75rem;
+}
+.mece-th-corner {
+  padding: .4rem .6rem;
+  background: transparent;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-light);
+  text-align: left;
+}
+.mece-col-header {
+  padding: .5rem .6rem;
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+.mece-row-header {
+  padding: .5rem .75rem;
+  background: var(--surface2);
+  border-radius: var(--radius-xs);
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  text-align: right;
+}
+.mece-cell {
+  padding: .55rem .4rem;
+  text-align: center;
+  border-radius: var(--radius-xs);
+  position: relative;
+  cursor: default;
+  transition: transform var(--trans), box-shadow var(--trans);
+  border: 1px solid transparent;
+}
+.mece-cell:hover {
+  transform: scale(1.08);
+  box-shadow: 0 3px 12px rgba(26,35,126,.18);
+  z-index: 10;
+  position: relative;
+}
+.mece-cell-num {
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1;
+  display: block;
+}
+.mece-cell-label {
+  font-size: .55rem;
+  letter-spacing: .03em;
+  opacity: .75;
+  display: block;
+  margin-top: 2px;
+}
+/* Heat levels — 0 to 4+ grants */
+.heat-0 { background: var(--surface2); border-color: var(--border); }
+.heat-0 .mece-cell-num { color: var(--text-light); }
+.heat-1 { background: #e8f5e9; border-color: #c8e6c9; }
+.heat-1 .mece-cell-num { color: #2e7d32; }
+.heat-2 { background: #fff3e0; border-color: #ffe0b2; }
+.heat-2 .mece-cell-num { color: #e65100; }
+.heat-3 { background: #fff8e1; border-color: #ffe082; }
+.heat-3 .mece-cell-num { color: #f9a825; }
+.heat-4 { background: #ffebee; border-color: #ffcdd2; }
+.heat-4 .mece-cell-num { color: #c62828; }
+.heat-hot { background: linear-gradient(135deg, #ffcdd2, #f8bbd0); border-color: #ef9a9a; }
+.heat-hot .mece-cell-num { color: #b71c1c; font-weight: 800; }
+
+.mece-legend {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .85rem;
+  flex-wrap: wrap;
+}
+.mece-legend-label { font-size: .65rem; color: var(--text-light); }
+.mece-legend-swatch {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+/* ─────────────────────────────────────────
+   TIMELINE
+───────────────────────────────────────── */
+.timeline-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.5rem 1.8rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.75rem;
+  overflow-x: auto;
+}
+.timeline-svg-wrap {
+  min-width: 680px;
+  position: relative;
+}
+
+/* ─────────────────────────────────────────
+   TIER SECTIONS
+───────────────────────────────────────── */
+.tier-section {
+  margin-bottom: 1.75rem;
+}
+.tier-header {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  padding: .8rem 1.25rem;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  position: relative;
+}
+.tier-1 .tier-header { background: var(--t1-bg); border-color: var(--t1-border); }
+.tier-2 .tier-header { background: var(--t2-bg); border-color: var(--t2-border); }
+.tier-3 .tier-header { background: var(--t3-bg); border-color: var(--t3-border); }
+
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: -.02em;
+}
+.tier-1 .tier-badge { background: var(--t1); }
+.tier-2 .tier-badge { background: var(--t2); }
+.tier-3 .tier-badge { background: var(--t3); }
+
+.tier-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.tier-1 .tier-title { color: var(--t1); }
+.tier-2 .tier-title { color: var(--t2); }
+.tier-3 .tier-title { color: var(--t3); }
+
+.tier-subtitle {
+  font-size: .75rem;
+  color: var(--text-muted);
+  margin-left: .1rem;
+}
+.tier-count {
+  margin-left: auto;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.6);
+  border: 1px solid var(--border);
+  padding: .2rem .6rem;
+  border-radius: 100px;
+}
+
+/* Grant table */
+.grant-table-wrap {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+}
+.grant-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8rem;
+}
+.grant-table thead th {
+  background: var(--surface2);
+  padding: .55rem 1rem;
+  text-align: left;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.grant-table thead th:last-child { text-align: right; }
+.grant-table tbody tr {
+  border-bottom: 1px solid var(--border-soft);
+  transition: background var(--trans);
+}
+.grant-table tbody tr:last-child { border-bottom: none; }
+.grant-table tbody tr:hover { background: var(--surface2); }
+.grant-table td {
+  padding: .7rem 1rem;
+  vertical-align: middle;
+}
+.grant-table td:last-child { text-align: right; }
+
+.grant-name {
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+.grant-name-ko {
+  font-size: .72rem;
+  color: var(--text-muted);
+  margin-top: .1rem;
+  font-weight: 400;
+}
+.grant-funder {
+  font-size: .72rem;
+  color: var(--text-muted);
+}
+
+/* Urgency chip */
+.urg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: .68rem;
+  font-weight: 700;
+  padding: .22rem .6rem;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.urg-red    { background: var(--urgent-bg); color: var(--urgent); border: 1px solid #ffcdd2; }
+.urg-orange { background: var(--hot-bg);    color: var(--hot);    border: 1px solid #ffcc80; }
+.urg-yellow { background: var(--warn-bg);   color: #b7801a;       border: 1px solid #ffe082; }
+.urg-green  { background: var(--safe-bg);   color: var(--safe);   border: 1px solid #c8e6c9; }
+
+/* Deadline cell */
+.deadline-cell {
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.deadline-est {
+  font-style: italic;
+  color: var(--text-est);
+  font-size: .72rem;
+}
+.est-icon { font-size: .65rem; opacity: .7; }
+
+/* Score badge */
+.score-badge {
+  display: inline-block;
+  font-size: .75rem;
+  font-weight: 700;
+  padding: .22rem .55rem;
+  border-radius: var(--radius-xs);
+  background: var(--navy);
+  color: #fff;
+  letter-spacing: -.01em;
+  min-width: 36px;
+  text-align: center;
+}
+.score-high  { background: var(--t1); }
+.score-mid   { background: var(--t2); }
+.score-low   { background: var(--t3); }
+
+/* MECE tags */
+.mece-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+}
+.mece-tag {
+  font-size: .62rem;
+  font-weight: 600;
+  padding: .14rem .4rem;
+  border-radius: 3px;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+/* Stage colors */
+.stage-basic         { background: #e8eaf6; color: #3949ab; }
+.stage-translational { background: #e0f2f1; color: #00695c; }
+.stage-clinical      { background: #fce4ec; color: #c2185b; }
+.stage-infrastructure{ background: #f3e5f5; color: #7b1fa2; }
+/* Funding type */
+.ftype-project    { background: #e3f2fd; color: #1565c0; }
+.ftype-fellowship { background: #fff8e1; color: #f57f17; }
+.ftype-consortium { background: #e8f5e9; color: #2e7d32; }
+.ftype-challenge  { background: #fbe9e7; color: #bf360c; }
+.ftype-inst       { background: #ede7f6; color: #512da8; }
+
+/* ─────────────────────────────────────────
+   PRINT STYLES
+───────────────────────────────────────── */
+@media print {
+  body { background: #fff; font-size: 11px; }
+  .site-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .kpi-card, .card, .tier-section, .timeline-wrap { box-shadow: none !important; break-inside: avoid; }
+  .mece-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .urg-chip  { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .score-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .tier-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ─────────────────────────────────────────
+   MISCELLANEOUS
+───────────────────────────────────────── */
+.spacer-sm { height: .5rem; }
+.spacer    { height: 1.25rem; }
+.full-card { margin-bottom: 1.75rem; }
+
+.footnote {
+  font-size: .68rem;
+  color: var(--text-light);
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+  line-height: 1.5;
+}
+.footnote strong { color: var(--text-muted); }
+
+/* Responsive table scroll */
+.table-scroll { overflow-x: auto; }
+@media (max-width: 700px) {
+  .grant-table thead th:nth-child(4),
+  .grant-table td:nth-child(4) { display: none; }
+}
+
+/* Inline SVG chart wrapper */
+svg text { font-family: var(--font-ui); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     HEADER
+════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="header-body">
+    <div class="header-left">
+      <div class="header-icon">🔬</div>
+      <div class="header-text">
+        <div class="header-eyebrow">Institut Pasteur Korea · Grant Hunter</div>
+        <h1 class="header-h1">Grant Hunter Report — AMR+AI Funding <em>Intelligence</em></h1>
+        <div class="header-sub">MECE 분류 기반 과제 분석 보고서 · Research Funding Dashboard</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">{{ kpi.total }}건 추적 중</div>
+      <div class="header-date">생성일 {{ run_date }}</div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════
+     PAGE
+════════════════════════════════════════ -->
+<main class="page">
+
+  <!-- KPI ROW -->
+  <div class="section-label">
+    <span class="section-label-text">핵심 지표</span>
+    <span class="section-label-line"></span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-total">
+      <div class="kpi-label">전체 과제</div>
+      <div class="kpi-value">{{ kpi.total }}</div>
+      <div class="kpi-sub">3개 티어 · 3개 MECE 축</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:100%; background: var(--navy-light);"></div></div>
+    </div>
+    <div class="kpi-card kpi-t1">
+      <div class="kpi-label">Tier 1 — 필수 지원</div>
+      <div class="kpi-value">{{ kpi.tier1 }}</div>
+      <div class="kpi-sub">Must Apply</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:{{ kpi.tier1_pct }}%; background: var(--t1);"></div></div>
+    </div>
+    <div class="kpi-card kpi-t2">
+      <div class="kpi-label">Tier 2 — 강한 적합</div>
+      <div class="kpi-value">{{ kpi.tier2 }}</div>
+      <div class="kpi-sub">Strong Fit</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:{{ kpi.tier2_pct }}%; background: var(--t2);"></div></div>
+    </div>
+    <div class="kpi-card kpi-t3">
+      <div class="kpi-label">Tier 3 — 모니터링</div>
+      <div class="kpi-value">{{ kpi.tier3 }}</div>
+      <div class="kpi-sub">Worth Monitoring</div>
+      <div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:{{ kpi.tier3_pct }}%; background: var(--t3);"></div></div>
+    </div>
+    <div class="kpi-card kpi-urgent">
+      <div class="kpi-label">긴급 마감 (≤30일)</div>
+      <div class="kpi-value">{{ urgency.urgent_count }}</div>
+      <div class="kpi-sub">마감 임박</div>
+      <div class="kpi-pills">
+        <span class="kpi-pill pill-red">● 긴급 {{ urgency.urgent_count }}건</span>
+        <span class="kpi-pill pill-orange">● 60일 내 {{ urgency.hot_count }}건</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- URGENCY + MECE MATRIX -->
+  <div class="section-label">
+    <span class="section-label-text">긴급도 분포 / MECE 매트릭스</span>
+    <span class="section-label-line"></span>
+  </div>
+  <div class="two-col">
+
+    <!-- Urgency bar chart -->
+    <div class="card">
+      <div class="card-title">
+        <span class="card-title-icon">⏱</span>
+        마감 긴급도 분포
+      </div>
+      <div class="urgency-bars">
+        <div class="urgency-row">
+          <div class="urgency-label">
+            <span class="urgency-dot" style="background:var(--urgent)"></span>
+            🔴 긴급 ≤30일
+          </div>
+          <div class="urgency-track">
+            <div class="urgency-fill" style="width:{{ urgency.urgent_pct }}%; background:var(--urgent);"></div>
+          </div>
+          <div class="urgency-count">{{ urgency.urgent_count }}</div>
+        </div>
+        <div class="urgency-row">
+          <div class="urgency-label">
+            <span class="urgency-dot" style="background:var(--hot)"></span>
+            🟠 주의 31–60일
+          </div>
+          <div class="urgency-track">
+            <div class="urgency-fill" style="width:{{ urgency.hot_pct }}%; background:var(--hot);"></div>
+          </div>
+          <div class="urgency-count">{{ urgency.hot_count }}</div>
+        </div>
+        <div class="urgency-row">
+          <div class="urgency-label">
+            <span class="urgency-dot" style="background:var(--warn)"></span>
+            🟡 준비 61–90일
+          </div>
+          <div class="urgency-track">
+            <div class="urgency-fill" style="width:{{ urgency.warn_pct }}%; background:var(--warn);"></div>
+          </div>
+          <div class="urgency-count">{{ urgency.warn_count }}</div>
+        </div>
+        <div class="urgency-row">
+          <div class="urgency-label">
+            <span class="urgency-dot" style="background:var(--safe)"></span>
+            🟢 여유 >90일
+          </div>
+          <div class="urgency-track">
+            <div class="urgency-fill" style="width:{{ urgency.safe_pct }}%; background:var(--safe);"></div>
+          </div>
+          <div class="urgency-count">{{ urgency.safe_count }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.4rem; padding-top:1rem; border-top: 1px solid var(--border-soft);">
+        <div class="card-title" style="margin-bottom:.75rem;">
+          <span class="card-title-icon">💰</span>
+          재원 출처별 분포
+        </div>
+        <div class="urgency-bars">
+          {% for src in source_dist %}
+          <div class="urgency-row">
+            <div class="urgency-label" style="font-size:.72rem;">{{ src.label }}</div>
+            <div class="urgency-track"><div class="urgency-fill" style="width:{{ src.pct }}%; background:{{ src.color }};"></div></div>
+            <div class="urgency-count">{{ src.count }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- MECE heatmap -->
+    <div class="card">
+      <div class="card-title">
+        <span class="card-title-icon">🔲</span>
+        MECE 교차 분석 — 연구단계 × 재원유형
+      </div>
+      <div class="mece-outer">
+        <table class="mece-table">
+          <thead>
+            <tr>
+              <th class="mece-th-corner">연구단계 ↓ / 유형 →</th>
+              {% for col in mece_cols %}
+              <th class="mece-col-header">{{ col.label }}</th>
+              {% endfor %}
+              <th class="mece-col-header">합계</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in mece_matrix %}
+            <tr>
+              <td class="mece-row-header"{% if row.muted %} style="color:var(--text-muted); font-style:italic;"{% endif %}>{{ row.label }}</td>
+              {% for cell in row.cells %}
+              <td class="mece-cell {{ cell.heat_class }}">
+                <span class="mece-cell-num">{{ cell.num }}</span>
+                {% if cell.label %}<span class="mece-cell-label">{{ cell.label }}</span>{% endif %}
+              </td>
+              {% endfor %}
+              <td class="mece-cell {{ row.total_heat }}"{% if not row.muted %} style="font-weight:800;"{% endif %}>
+                <span class="mece-cell-num">{{ row.total }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+            <!-- totals row -->
+            <tr>
+              <td class="mece-row-header" style="font-weight:800; color:var(--text);">합계</td>
+              {% for col_total in mece_col_totals %}
+              <td class="mece-cell" style="background:var(--surface2);font-weight:700;"><span class="mece-cell-num">{{ col_total }}</span></td>
+              {% endfor %}
+              <td class="mece-cell heat-hot" style="font-weight:800;"><span class="mece-cell-num">{{ kpi.total }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mece-legend">
+        <span class="mece-legend-label">밀도:</span>
+        <div class="mece-legend-swatch heat-0" style="border-color:var(--border)"></div>
+        <span class="mece-legend-label">0</span>
+        <div class="mece-legend-swatch heat-1"></div>
+        <span class="mece-legend-label">1</span>
+        <div class="mece-legend-swatch heat-2"></div>
+        <span class="mece-legend-label">2</span>
+        <div class="mece-legend-swatch heat-hot"></div>
+        <span class="mece-legend-label">5+</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMELINE (deferred) -->
+  <div class="section-label">
+    <span class="section-label-text">마감 타임라인 (2026)</span>
+    <span class="section-label-line"></span>
+  </div>
+  <div class="timeline-wrap full-card">
+    <div class="card-title">
+      <span class="card-title-icon">📅</span>
+      Deadline Timeline — 월별 마감 분포
+    </div>
+    <p style="color:var(--text-muted); font-size:.85rem; padding:.5rem 0;">Timeline coming soon.</p>
+  </div>
+
+  <!-- TIER 1 -->
+  <div class="section-label">
+    <span class="section-label-text">과제 목록 — 티어별 상세</span>
+    <span class="section-label-line"></span>
+  </div>
+
+  {% if tier1_grants %}
+  <div class="tier-section tier-1">
+    <div class="tier-header">
+      <div class="tier-badge">T1</div>
+      <div>
+        <div class="tier-title">Tier 1 — Must Apply · 필수 지원</div>
+        <div class="tier-subtitle">점수 상위 · 즉각 검토 필요</div>
+      </div>
+      <div class="tier-count">{{ kpi.tier1 }}건</div>
+    </div>
+    <div class="grant-table-wrap">
+      <div class="table-scroll">
+        <table class="grant-table">
+          <thead>
+            <tr>
+              <th style="width:36%">과제명</th>
+              <th>재원</th>
+              <th>마감</th>
+              <th>긴급도</th>
+              <th>MECE 분류</th>
+              <th>점수</th>
+              <th>적격성</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in tier1_grants %}
+            {{ g.row_html | safe }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TIER 2 -->
+  {% if tier2_grants %}
+  <div class="tier-section tier-2">
+    <div class="tier-header">
+      <div class="tier-badge">T2</div>
+      <div>
+        <div class="tier-title">Tier 2 — Strong Fit · 강한 적합</div>
+        <div class="tier-subtitle">전략적 검토 권장</div>
+      </div>
+      <div class="tier-count">{{ kpi.tier2 }}건</div>
+    </div>
+    <div class="grant-table-wrap">
+      <div class="table-scroll">
+        <table class="grant-table">
+          <thead>
+            <tr>
+              <th style="width:36%">과제명</th>
+              <th>재원</th>
+              <th>마감</th>
+              <th>긴급도</th>
+              <th>MECE 분류</th>
+              <th>점수</th>
+              <th>적격성</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in tier2_grants %}
+            {{ g.row_html | safe }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TIER 3 -->
+  {% if tier3_grants %}
+  <div class="tier-section tier-3">
+    <div class="tier-header">
+      <div class="tier-badge">T3</div>
+      <div>
+        <div class="tier-title">Tier 3 — Worth Monitoring · 모니터링</div>
+        <div class="tier-subtitle">주기적 확인 권장</div>
+      </div>
+      <div class="tier-count">{{ kpi.tier3 }}건</div>
+    </div>
+    <div class="grant-table-wrap">
+      <div class="table-scroll">
+        <table class="grant-table">
+          <thead>
+            <tr>
+              <th style="width:36%">과제명</th>
+              <th>재원</th>
+              <th>마감</th>
+              <th>긴급도</th>
+              <th>MECE 분류</th>
+              <th>점수</th>
+              <th>적격성</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in tier3_grants %}
+            {{ g.row_html | safe }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TIER 4 (Low Priority) -->
+  {% if tier4_grants %}
+  <div class="tier-section" style="margin-bottom:1.75rem;">
+    <div class="tier-header" style="background:var(--surface2); border:1px solid var(--border); border-bottom:none; border-radius:var(--radius) var(--radius) 0 0;">
+      <div class="tier-badge" style="background:var(--text-muted);">T4</div>
+      <div>
+        <div class="tier-title" style="color:var(--text-muted);">Tier 4 — Low Priority · 낮은 우선순위</div>
+        <div class="tier-subtitle">추가 검토 불필요</div>
+      </div>
+      <div class="tier-count">{{ tier4_grants | length }}건</div>
+    </div>
+    <div class="grant-table-wrap">
+      <div class="table-scroll">
+        <table class="grant-table">
+          <thead>
+            <tr>
+              <th style="width:36%">과제명</th>
+              <th>재원</th>
+              <th>마감</th>
+              <th>긴급도</th>
+              <th>MECE 분류</th>
+              <th>점수</th>
+              <th>적격성</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in tier4_grants %}
+            {{ g.row_html | safe }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not tier1_grants and not tier2_grants and not tier3_grants and not tier4_grants %}
+  <p style="color:var(--text-muted); padding:2rem 0; text-align:center;">No grants to display.</p>
+  {% endif %}
+
+  <!-- COLLECTION STATS -->
+  <div class="section-label">
+    <span class="section-label-text">수집 현황</span>
+    <span class="section-label-line"></span>
+  </div>
+  <div class="card" style="margin-bottom:1.75rem;">
+    <div class="card-title">
+      <span class="card-title-icon">📊</span>
+      Collection Summary
+    </div>
+    <ul style="padding-left:1.25rem; font-size:.83rem; color:var(--text-muted);">
+      {% for s in stat_items %}
+      <li><strong>{{ s.source }}</strong>: {{ s.collected }} collected, {{ s.filtered }} relevant [{{ s.status }}]</li>
+      {% endfor %}
+    </ul>
+    {% for err in error_items %}
+    <p style="color:#c62828; background:#ffebee; padding:6px 12px; border-radius:4px; font-size:.8rem; margin-top:.5rem;">{{ err }}</p>
+    {% endfor %}
+  </div>
+
+  <!-- FOOTNOTES -->
+  <div class="footnote">
+    <span>🤖</span>
+    <span>
+      <strong>Grant Hunter v1.0</strong> — AMR+AI 자동 과제 수집 시스템 · Institut Pasteur Korea (IPK) ·
+      생성: {{ run_date }}{% if profile_name %} · Profile: {{ profile_name }}{% endif %} · 본 보고서는 참고용이며 지원 결정의 단독 근거로 사용하지 마십시오.
+    </span>
+  </div>
+
+</main>
+
+<script>
+// Animate KPI bars on load
+document.addEventListener('DOMContentLoaded', function() {
+  requestAnimationFrame(function() {
+    document.querySelectorAll('.kpi-bar-fill, .urgency-fill').forEach(function(el) {
+      var w = el.style.width;
+      el.style.width = '0';
+      requestAnimationFrame(function() {
+        el.style.transition = 'width .7s cubic-bezier(.4,0,.2,1)';
+        el.style.width = w;
+      });
+    });
+  });
+});
+</script>
+</body>
+</html>

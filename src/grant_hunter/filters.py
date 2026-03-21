@@ -49,6 +49,8 @@ AMR_CORE_KEYWORDS: List[str] = [
         "oxa-48", "kpc", "vim", "imp", "ctx-m", "bacteriophage",
         "phage therapy", "antimicrobial peptide", "resistance gene",
         "resistome", "colistin", "carbapenem", "polymyxin",
+        # Expanded: clinically specific AMR terms (v2.7)
+        "sepsis", "bacteremia", "nosocomial", "gram-negative", "gram-positive",
         "항생제 내성", "항균제 내성", "다제내성", "슈퍼박테리아", "내성균",
         "카바페넴 내성", "내성유전자",
     }
@@ -110,7 +112,7 @@ def filter_grants(grants: List[Grant], profile=None) -> List[Grant]:
             if drug_hits >= 1:
                 grant.relevance_score *= 0.7  # reduced penalty for AMR+drug_discovery
             else:
-                grant.relevance_score *= 0.5  # standard tier2 penalty
+                grant.relevance_score *= 0.65  # softened tier2 penalty (v2.7)
             tier2_count += 1
         else:
             tier1_count += 1

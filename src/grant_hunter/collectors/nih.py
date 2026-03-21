@@ -39,6 +39,10 @@ NIH_SEARCH_TERMS = [
     "artificial intelligence AMR",
     "deep learning antimicrobial",
     "computational drug discovery antibiotic",
+    "machine learning antimicrobial resistance",
+    "artificial intelligence antibiotic discovery",
+    "genomic surveillance drug resistance",
+    "predictive model infection",
 ]
 
 

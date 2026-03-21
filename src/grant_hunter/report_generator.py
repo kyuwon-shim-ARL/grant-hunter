@@ -8,10 +8,15 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import List, Optional
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+from grant_hunter.classifier import GrantClassifier
 from grant_hunter.config import REPORTS_DIR, DEADLINE_WARN_DAYS
 from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
+
+TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 SOURCE_COLORS = {
     "nih": "#1a73e8",
@@ -66,38 +71,6 @@ def _source_badge(source: str) -> str:
     return f'<span class="badge" style="background:{color}">{label}</span>'
 
 
-def generate_html_report(
-    new_grants: List[Grant],
-    changed_grants: List[Grant],
-    all_filtered: List[Grant],
-    stats: dict,
-    run_date: Optional[datetime] = None,
-    eligibility_map: Optional[dict] = None,
-    eligibility_reason_map: Optional[dict] = None,
-    profile_name: Optional[str] = None,
-) -> Path:
-    """Generate HTML report and return its path."""
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    run_dt = run_date or datetime.utcnow()
-    filename = f"report_{run_dt.strftime('%Y%m%d_%H%M%S')}.html"
-    path = REPORTS_DIR / filename
-
-    new_fps = {g.fingerprint() for g in new_grants}
-
-    # Sort combined highlights by deadline
-    highlights = sorted(
-        new_grants + changed_grants,
-        key=lambda g: g.deadline or date.max,
-    )
-
-    html_content = _build_html(highlights, all_filtered, stats, run_dt, new_fps, eligibility_map, eligibility_reason_map, profile_name)
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(html_content)
-
-    logger.info("Report written: %s", path)
-    return path
-
-
 _ELIG_COLORS = {
     "eligible": "#2e7d32",
     "uncertain": "#e65100",
@@ -137,107 +110,318 @@ def _grant_row(g: Grant, tag: str = "", eligibility: str = "", reason: str = "")
     </tr>"""
 
 
+def _urgency_chip(days: Optional[int]) -> str:
+    """Return (chip_class, label) for a deadline days-until value."""
+    if days is None:
+        return "urg-green", "미정"
+    if days < 0:
+        return "urg-red", "만료"
+    if days <= 30:
+        return "urg-red", f"긴급 D-{days}"
+    if days <= 60:
+        return "urg-orange", f"주의 D-{days}"
+    if days <= 90:
+        return "urg-yellow", f"준비 D-{days}"
+    return "urg-green", f"여유 D-{days}"
+
+
+def _stage_tag_class(stage: str) -> str:
+    return {
+        "basic": "stage-basic",
+        "translational": "stage-translational",
+        "clinical": "stage-clinical",
+        "infrastructure": "stage-infrastructure",
+    }.get(stage, "stage-basic")
+
+
+def _ftype_tag_class(ftype: str) -> str:
+    return {
+        "project_grant": "ftype-project",
+        "fellowship": "ftype-fellowship",
+        "consortium": "ftype-consortium",
+        "challenge": "ftype-challenge",
+        "institutional": "ftype-inst",
+    }.get(ftype, "ftype-project")
+
+
+def _ftype_label(ftype: str) -> str:
+    return {
+        "project_grant": "프로젝트",
+        "fellowship": "펠로우십",
+        "consortium": "컨소시엄",
+        "challenge": "챌린지",
+        "institutional": "기관",
+    }.get(ftype, ftype)
+
+
+def _stage_label(stage: str) -> str:
+    return {
+        "basic": "기초",
+        "translational": "중개",
+        "clinical": "임상",
+        "infrastructure": "인프라",
+        "unclassified": "미분류",
+    }.get(stage, stage)
+
+
+def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "") -> str:
+    """Build an HTML <tr> for the MECE tier table."""
+    today = date.today()
+    days = (g.deadline - today).days if g.deadline else None
+    chip_class, chip_label = _urgency_chip(days)
+    deadline_str = _fmt_deadline(g.deadline)
+    score_val = int(g.relevance_score * 100)
+    score_class = "score-high" if score_val >= 70 else ("score-mid" if score_val >= 50 else "score-low")
+    title_escaped = html.escape(g.title or "")
+    url_escaped = html.escape(g.url or "#")
+    agency_escaped = html.escape(g.agency or "")
+    ftype_class = _ftype_tag_class(clf.funding_type)
+    ftype_lbl = _ftype_label(clf.funding_type)
+    stage_class = _stage_tag_class(clf.research_stage)
+    stage_lbl = _stage_label(clf.research_stage)
+
+    # Eligibility column
+    if eligibility:
+        color = _ELIG_COLORS.get(eligibility, "#888")
+        reason_escaped = html.escape(reason or "")
+        elig_html = f'<span style="color:{color};font-weight:bold" title="{reason_escaped}">{eligibility}</span>'
+    else:
+        elig_html = '<span style="color:#aaa">—</span>'
+
+    return f"""<tr>
+      <td>
+        <div class="grant-name"><a href="{url_escaped}" target="_blank">{title_escaped}</a></div>
+        <div class="grant-funder">{agency_escaped}</div>
+      </td>
+      <td><span class="mece-tag {ftype_class}">{ftype_lbl}</span></td>
+      <td>
+        <div class="deadline-cell">{deadline_str}</div>
+        <div><span class="urg-chip {chip_class}">{chip_label}</span></div>
+      </td>
+      <td><span class="urg-chip {chip_class}">{chip_class.replace('urg-', '')}</span></td>
+      <td>
+        <div class="mece-tags">
+          <span class="mece-tag {stage_class}">{stage_lbl}</span>
+          <span class="mece-tag {ftype_class}">{ftype_lbl}</span>
+        </div>
+      </td>
+      <td><span class="score-badge {score_class}">{score_val}</span></td>
+      <td>{elig_html}</td>
+    </tr>"""
+
+
+def _heat_class(n: int) -> str:
+    if n == 0:
+        return "heat-0"
+    if n == 1:
+        return "heat-1"
+    if n == 2:
+        return "heat-2"
+    if n <= 4:
+        return "heat-3"
+    return "heat-hot"
+
+
+def _safe_pct(part: int, total: int) -> float:
+    if total == 0:
+        return 0.0
+    return round(part / total * 100, 1)
+
+
+def generate_html_report(
+    new_grants: List[Grant],
+    changed_grants: List[Grant],
+    all_filtered: List[Grant],
+    stats: dict,
+    run_date: Optional[datetime] = None,
+    eligibility_map: Optional[dict] = None,
+    eligibility_reason_map: Optional[dict] = None,
+    profile_name: Optional[str] = None,
+) -> Path:
+    """Generate HTML report and return its path."""
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    run_dt = run_date or datetime.utcnow()
+    filename = f"report_{run_dt.strftime('%Y%m%d_%H%M%S')}.html"
+    path = REPORTS_DIR / filename
+
+    html_content = _build_html(
+        all_filtered, stats, run_dt,
+        eligibility_map, eligibility_reason_map, profile_name
+    )
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(html_content)
+
+    logger.info("Report written: %s", path)
+    return path
+
+
 def _build_html(
-    highlights: List[Grant],
     all_filtered: List[Grant],
     stats: dict,
     run_dt: datetime,
-    new_fps: Optional[set] = None,
     eligibility_map: Optional[dict] = None,
     eligibility_reason_map: Optional[dict] = None,
     profile_name: Optional[str] = None,
 ) -> str:
     run_str = run_dt.strftime("%Y-%m-%d %H:%M UTC")
-    profile_str = f" | Profile: <strong>{html.escape(profile_name)}</strong>" if profile_name and profile_name != "Default (Balanced)" else ""
+    elig_map = eligibility_map or {}
+    reason_map = eligibility_reason_map or {}
 
-    highlight_rows = ""
-    for g in highlights:
-        tag = "new" if (new_fps and g.fingerprint() in new_fps) else "changed"
-        fp = g.fingerprint()
-        elig = (eligibility_map or {}).get(fp, "")
-        reason = (eligibility_reason_map or {}).get(fp, "")
-        highlight_rows += _grant_row(g, tag, elig, reason)
+    classifier = GrantClassifier()
+    today = date.today()
 
-    all_rows = ""
-    for g in sorted(all_filtered, key=lambda x: x.deadline or date.max):
-        fp = g.fingerprint()
-        elig = (eligibility_map or {}).get(fp, "")
-        reason = (eligibility_reason_map or {}).get(fp, "")
-        all_rows += _grant_row(g, "", elig, reason)
+    # --- Classify all grants ---
+    classifications = {g.fingerprint(): classifier.classify(g, today) for g in all_filtered}
 
-    # Stats summary
-    stat_items = ""
+    # --- KPI counts ---
+    tier_counts = {"tier1": 0, "tier2": 0, "tier3": 0, "tier4": 0}
+    for clf in classifications.values():
+        tier_counts[clf.tier] = tier_counts.get(clf.tier, 0) + 1
+
+    total = len(all_filtered)
+    kpi = {
+        "total": total,
+        "tier1": tier_counts["tier1"],
+        "tier2": tier_counts["tier2"],
+        "tier3": tier_counts["tier3"],
+        "tier1_pct": _safe_pct(tier_counts["tier1"], total),
+        "tier2_pct": _safe_pct(tier_counts["tier2"], total),
+        "tier3_pct": _safe_pct(tier_counts["tier3"], total),
+    }
+
+    # --- Urgency counts ---
+    u_urgent = sum(1 for g in all_filtered if g.deadline and (g.deadline - today).days >= 0 and (g.deadline - today).days <= 30)
+    u_hot = sum(1 for g in all_filtered if g.deadline and 30 < (g.deadline - today).days <= 60)
+    u_warn = sum(1 for g in all_filtered if g.deadline and 60 < (g.deadline - today).days <= 90)
+    u_safe = sum(1 for g in all_filtered if not g.deadline or (g.deadline - today).days > 90)
+    urgency = {
+        "urgent_count": u_urgent,
+        "hot_count": u_hot,
+        "warn_count": u_warn,
+        "safe_count": u_safe,
+        "urgent_pct": _safe_pct(u_urgent, total),
+        "hot_pct": _safe_pct(u_hot, total),
+        "warn_pct": _safe_pct(u_warn, total),
+        "safe_pct": _safe_pct(u_safe, total),
+    }
+
+    # --- Source distribution ---
+    source_counts: dict[str, int] = {}
+    for g in all_filtered:
+        source_counts[g.source] = source_counts.get(g.source, 0) + 1
+    source_dist = [
+        {
+            "label": SOURCE_LABELS.get(src, src.upper()),
+            "count": cnt,
+            "pct": _safe_pct(cnt, total),
+            "color": SOURCE_COLORS.get(src, "#888"),
+        }
+        for src, cnt in sorted(source_counts.items(), key=lambda x: -x[1])
+    ]
+
+    # --- MECE matrix ---
+    STAGES = ["basic", "translational", "clinical", "infrastructure", "unclassified"]
+    FTYPES = ["project_grant", "fellowship", "consortium", "challenge", "institutional"]
+
+    # count per (stage, ftype)
+    matrix: dict[tuple[str, str], int] = {}
+    for fp, clf in classifications.items():
+        key = (clf.research_stage, clf.funding_type)
+        matrix[key] = matrix.get(key, 0) + 1
+
+    STAGE_LABELS = {
+        "basic": "기초 (Basic)",
+        "translational": "중개 (Translational)",
+        "clinical": "임상 (Clinical)",
+        "infrastructure": "인프라 (Infra)",
+        "unclassified": "미분류",
+    }
+    FTYPE_LABELS = {
+        "project_grant": "프로젝트<br>과제",
+        "fellowship": "펠로우십",
+        "consortium": "컨소시엄",
+        "challenge": "챌린지",
+        "institutional": "기관·인프라",
+    }
+
+    mece_cols = [{"label": FTYPE_LABELS[ft]} for ft in FTYPES]
+    mece_matrix = []
+    for stage in STAGES:
+        row_cells = []
+        row_total = 0
+        for ftype in FTYPES:
+            n = matrix.get((stage, ftype), 0)
+            row_total += n
+            row_cells.append({
+                "num": str(n) if n > 0 else "—",
+                "heat_class": _heat_class(n),
+                "label": "",
+            })
+        mece_matrix.append({
+            "label": STAGE_LABELS[stage],
+            "cells": row_cells,
+            "total": row_total,
+            "total_heat": _heat_class(row_total),
+            "muted": stage == "unclassified",
+        })
+
+    mece_col_totals = []
+    for ftype in FTYPES:
+        col_sum = sum(matrix.get((stage, ftype), 0) for stage in STAGES)
+        mece_col_totals.append(col_sum)
+
+    # --- Tier grant rows ---
+    def _make_tier_rows(tier_key: str) -> list:
+        rows = []
+        for g in sorted(all_filtered, key=lambda x: (-x.relevance_score, x.deadline or date.max)):
+            fp = g.fingerprint()
+            clf = classifications.get(fp)
+            if clf and clf.tier == tier_key:
+                row_html = _build_tier_row_html(
+                    g, clf,
+                    elig_map.get(fp, ""),
+                    reason_map.get(fp, ""),
+                )
+                rows.append({"row_html": row_html})
+        return rows
+
+    tier1_grants = _make_tier_rows("tier1")
+    tier2_grants = _make_tier_rows("tier2")
+    tier3_grants = _make_tier_rows("tier3")
+    tier4_grants = _make_tier_rows("tier4")
+
+    # --- Stats ---
+    stat_items = []
+    error_items = []
     for src, info in stats.items():
-        status_icon = "OK" if info.get("success") else "FAIL"
-        stat_items += f"<li><strong>{src}</strong>: {info.get('collected', 0)} collected, {info.get('filtered', 0)} relevant [{status_icon}]</li>"
-
-    errors_html = ""
-    for src, info in stats.items():
+        stat_items.append({
+            "source": src,
+            "collected": info.get("collected", 0),
+            "filtered": info.get("filtered", 0),
+            "status": "OK" if info.get("success") else "FAIL",
+        })
         if info.get("error"):
-            errors_html += f"<p class='error'>{html.escape(src)}: {html.escape(str(info['error']))}</p>"
+            error_items.append(f"{html.escape(src)}: {html.escape(str(info['error']))}")
 
-    urgent_count = sum(1 for g in all_filtered if _is_urgent(g.deadline))
+    env = Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        autoescape=select_autoescape(["html"]),
+    )
+    template = env.get_template("mece_report.html")
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Grant Hunter Report – {run_str}</title>
-<style>
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f7fa; color: #333; }}
-  h1 {{ color: #1a1a2e; border-bottom: 3px solid #1a73e8; padding-bottom: 8px; }}
-  h2 {{ color: #444; margin-top: 30px; }}
-  .meta {{ color: #888; font-size: 0.9em; margin-bottom: 20px; }}
-  .summary-box {{ background: white; border-radius: 8px; padding: 16px 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }}
-  .kpi {{ display: inline-block; margin-right: 32px; text-align: center; }}
-  .kpi-num {{ font-size: 2em; font-weight: bold; color: #1a73e8; }}
-  .kpi-label {{ font-size: 0.8em; color: #888; }}
-  table {{ width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); margin-bottom: 30px; }}
-  th {{ background: #1a1a2e; color: white; padding: 10px 12px; text-align: left; font-size: 0.85em; }}
-  td {{ padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: top; font-size: 0.88em; }}
-  tr:hover td {{ background: #f0f4ff; }}
-  tr.urgent td {{ background: #fff8e1; }}
-  tr.expired td {{ opacity: 0.5; }}
-  .deadline {{ font-weight: bold; }}
-  tr.urgent .deadline {{ color: #c62828; }}
-  .badge {{ display: inline-block; padding: 2px 8px; border-radius: 12px; color: white; font-size: 0.75em; margin-right: 4px; }}
-  .tag {{ display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.7em; margin-right: 4px; font-weight: bold; }}
-  .tag-new {{ background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }}
-  .tag-changed {{ background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }}
-  .score {{ color: #888; font-size: 0.8em; }}
-  .desc {{ color: #666; font-size: 0.8em; margin-top: 3px; }}
-  .error {{ color: #c62828; background: #ffebee; padding: 6px 12px; border-radius: 4px; }}
-  a {{ color: #1a73e8; text-decoration: none; }}
-  a:hover {{ text-decoration: underline; }}
-  ul {{ margin: 4px 0; padding-left: 20px; }}
-  .section-label {{ font-size: 0.8em; color: #888; text-transform: uppercase; letter-spacing: 1px; }}
-</style>
-</head>
-<body>
-<h1>Grant Hunter Report</h1>
-<p class="meta">Generated: {run_str} | AMR + AI keyword filter{profile_str}</p>
-
-<div class="summary-box">
-  <div class="kpi"><div class="kpi-num">{len(all_filtered)}</div><div class="kpi-label">Relevant Grants</div></div>
-  <div class="kpi"><div class="kpi-num">{len(highlights)}</div><div class="kpi-label">New / Changed</div></div>
-  <div class="kpi"><div class="kpi-num" style="color:#c62828">{urgent_count}</div><div class="kpi-label">Deadline ≤7 days</div></div>
-</div>
-
-<div class="summary-box">
-  <strong>Collection Summary</strong>
-  <ul>{stat_items}</ul>
-  {errors_html}
-</div>
-
-{"<h2>New &amp; Changed Grants</h2><table><thead><tr><th>Source</th><th>Title</th><th>Agency</th><th>Deadline</th><th>Amount</th><th>Score</th><th>Eligibility</th></tr></thead><tbody>" + highlight_rows + "</tbody></table>" if highlights else "<p>No new or changed grants in this run.</p>"}
-
-<h2>All Relevant Grants ({len(all_filtered)} total)</h2>
-<table>
-<thead><tr><th>Source</th><th>Title</th><th>Agency</th><th>Deadline</th><th>Amount</th><th>Score</th><th>Eligibility</th></tr></thead>
-<tbody>{all_rows}</tbody>
-</table>
-
-<p class="meta">Grant Hunter v1.0 – automated AMR+AI grant discovery pipeline</p>
-</body>
-</html>"""
+    return template.render(
+        run_date=run_str,
+        profile_name=profile_name,
+        kpi=kpi,
+        urgency=urgency,
+        source_dist=source_dist,
+        mece_cols=mece_cols,
+        mece_matrix=mece_matrix,
+        mece_col_totals=mece_col_totals,
+        tier1_grants=tier1_grants,
+        tier2_grants=tier2_grants,
+        tier3_grants=tier3_grants,
+        tier4_grants=tier4_grants,
+        stat_items=stat_items,
+        error_items=error_items,
+    )

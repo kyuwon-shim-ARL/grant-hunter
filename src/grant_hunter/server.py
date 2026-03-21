@@ -70,11 +70,12 @@ def _get_collector(source_name: str):
     return getattr(module, cls_name)()
 
 
-def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> None:
+def _run_collection_job(job_id: str, sources: list[str] | None, test: bool, profile_name: str = "default") -> None:
     """Background thread: run collectors one by one."""
     from grant_hunter.filters import filter_grants
     from grant_hunter.eligibility import EligibilityEngine
     from grant_hunter.scoring import RelevanceScorer
+    from grant_hunter.profiles import get_profile
     from grant_hunter.report_generator import generate_html_report
     from grant_hunter.dashboard import generate_dashboard
 
@@ -109,13 +110,17 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool) -> N
                         s for s in _jobs[job_id]["pending_sources"] if s != src_name
                     ]
 
-        filtered = filter_grants(all_grants)
+        try:
+            profile = get_profile(profile_name)
+        except KeyError:
+            profile = None
+        filtered = filter_grants(all_grants, profile=profile)
         for src_name in source_stats:
             src_filtered = [g for g in filtered if g.source == src_name]
             source_stats[src_name]["filtered"] = len(src_filtered)
 
         elig_engine = EligibilityEngine()
-        scorer = RelevanceScorer()
+        scorer = RelevanceScorer(profile=profile)
         eligibility_map: dict = {}
         eligibility_reason_map: dict = {}
         score_map: dict = {}
@@ -220,6 +225,11 @@ async def list_tools() -> list[types.Tool]:
                         "description": "If true, collect only 1 page per source (fast test mode).",
                         "default": False,
                     },
+                    "profile": {
+                        "type": "string",
+                        "description": "Researcher profile for filtering/scoring (default: 'default').",
+                        "default": "default",
+                    },
                 },
             },
         ),
@@ -262,6 +272,11 @@ async def list_tools() -> list[types.Tool]:
                         "type": "string",
                         "description": "Researcher profile name for scoring (default: 'default'). Use grant_list_profiles to see available profiles.",
                         "default": "default",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 20, max: 100).",
+                        "default": 20,
                     },
                 },
                 "required": ["query"],
@@ -379,6 +394,7 @@ async def _dispatch(name: str, args: dict[str, Any]) -> Any:
 def _tool_grant_collect(args: dict) -> dict:
     sources = args.get("sources") or None
     test = bool(args.get("test", False))
+    profile_name = args.get("profile", "default")
     job_id = str(uuid.uuid4())[:8]
     with _jobs_lock:
         _jobs[job_id] = {
@@ -390,7 +406,7 @@ def _tool_grant_collect(args: dict) -> dict:
         }
     t = threading.Thread(
         target=_run_collection_job,
-        args=(job_id, sources, test),
+        args=(job_id, sources, test, profile_name),
         daemon=True,
     )
     t.start()
@@ -468,7 +484,8 @@ def _tool_grant_search(args: dict) -> list:
         available = ", ".join(list_profiles().keys())
         return {"error": f"Unknown profile '{profile_name}'. Available: {available}"}
     scorer = RelevanceScorer(profile=profile)
-    scored = sorted(results, key=lambda g: scorer.score(g), reverse=True)[:20]
+    limit = min(int(args.get("limit", 20)), 100)
+    scored = sorted(results, key=lambda g: scorer.score(g), reverse=True)[:limit]
 
     return [
         {

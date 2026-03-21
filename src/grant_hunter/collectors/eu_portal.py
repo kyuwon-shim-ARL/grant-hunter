@@ -16,6 +16,7 @@ import requests
 
 from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.config import REQUEST_TIMEOUT
+from grant_hunter.filters import AMR_KEYWORDS, AI_KEYWORDS
 from grant_hunter.models import Grant
 
 logger = logging.getLogger(__name__)
@@ -24,22 +25,9 @@ GRANTS_TENDERS_URL = (
     "https://ec.europa.eu/info/funding-tenders/opportunities/data/referenceData/grantsTenders.json"
 )
 
-# Keywords for AMR / AI relevance filtering (case-insensitive)
-AMR_AI_KEYWORDS = [
-    "antimicrobial",
-    "antibiotic",
-    "AMR",
-    "drug resistance",
-    "drug discovery",
-    "artificial intelligence",
-    "machine learning",
-    "infectious disease",
-    "pathogen",
-    "bacteria",
-    "superbug",
-    "sepsis",
-    "One Health",
-]
+# Single source of truth: combine AMR + AI keywords from filters.py
+# Deduplicate and use as pre-filter for EU collection
+AMR_AI_KEYWORDS = list(set(AMR_KEYWORDS + AI_KEYWORDS))
 
 OPEN_STATUSES = {"open", "forthcoming"}
 
