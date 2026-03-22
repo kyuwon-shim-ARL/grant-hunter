@@ -91,42 +91,29 @@ def passes_keyword_gate(grant: Grant) -> str:
     return "skip"
 
 
-def filter_grants(grants: List[Grant], profile=None) -> List[Grant]:
-    """Return grants that pass keyword filter, with two tiers.
+def score_and_rank_grants(grants: List[Grant], profile=None) -> List[Grant]:
+    """Score all grants and return sorted by relevance (descending).
 
-    Tier 1: AMR AND AI keywords present (full relevance score).
-    Tier 2: AMR-only (score penalized by 0.5x to rank below Tier 1).
+    Every grant receives a relevance score (0.0–1.0) based on keyword
+    matching across AMR, AI, drug-discovery, and funding-amount axes.
+    No binary gate — users judge from the ranked list.
     """
     scorer = RelevanceScorer(profile)
-    result: List[Grant] = []
-    tier1_count = 0
-    tier2_count = 0
     for grant in grants:
-        tier = passes_keyword_gate(grant)
-        if tier == "skip":
-            continue
         grant.relevance_score = scorer.score(grant)
-        if tier == "tier2":
-            searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
-            drug_hits, _ = _count_hits(searchable, DRUG_KEYWORDS)
-            if drug_hits >= 1:
-                grant.relevance_score *= 0.7  # reduced penalty for AMR+drug_discovery
-            else:
-                grant.relevance_score *= 0.65  # softened tier2 penalty (v2.7)
-            tier2_count += 1
-        else:
-            tier1_count += 1
-        result.append(grant)
 
-    result.sort(key=lambda g: g.relevance_score, reverse=True)
+    result = sorted(grants, key=lambda g: g.relevance_score, reverse=True)
+    top_score = result[0].relevance_score if result else 0.0
     logger.info(
-        "Filter: %d/%d grants passed (tier1=%d AMR+AI, tier2=%d AMR-only)",
+        "Scored: %d grants, top score: %.2f",
         len(result),
-        len(grants),
-        tier1_count,
-        tier2_count,
+        top_score,
     )
     return result
+
+
+# Backward compatibility alias
+filter_grants = score_and_rank_grants
 
 
 def diff_grants(

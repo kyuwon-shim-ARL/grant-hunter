@@ -13,6 +13,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from grant_hunter.classifier import GrantClassifier
 from grant_hunter.config import REPORTS_DIR, DEADLINE_WARN_DAYS
 from grant_hunter.models import Grant
+from grant_hunter.scoring import RelevanceScorer
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +165,29 @@ def _stage_label(stage: str) -> str:
     }.get(stage, stage)
 
 
-def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "") -> str:
+def _breakdown_bar_html(breakdown: dict) -> str:
+    """Render an inline stacked bar for score breakdown."""
+    amr = breakdown.get("amr", 0)
+    ai = breakdown.get("ai", 0)
+    drug = breakdown.get("drug", 0)
+    amt = breakdown.get("amount_bonus", 0)
+    total = amr + ai + drug + amt
+    if total <= 0:
+        return '<div class="breakdown-bar"><div class="breakdown-empty"></div></div>'
+
+    def pct(v: float) -> float:
+        return round(v / total * 100, 1) if total > 0 else 0
+
+    return f'''<div class="breakdown-bar" title="AMR {amr:.0%} · AI {ai:.0%} · Drug {drug:.0%} · Amt {amt:.0%}">
+      <div class="bd-seg bd-amr" style="width:{pct(amr)}%"></div>
+      <div class="bd-seg bd-ai" style="width:{pct(ai)}%"></div>
+      <div class="bd-seg bd-drug" style="width:{pct(drug)}%"></div>
+      <div class="bd-seg bd-amt" style="width:{pct(amt)}%"></div>
+    </div>'''
+
+
+def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
+                         breakdown: dict | None = None) -> str:
     """Build an HTML <tr> for the MECE tier table."""
     today = date.today()
     days = (g.deadline - today).days if g.deadline else None
@@ -175,10 +198,10 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "")
     title_escaped = html.escape(g.title or "")
     url_escaped = html.escape(g.url or "#")
     agency_escaped = html.escape(g.agency or "")
-    ftype_class = _ftype_tag_class(clf.funding_type)
-    ftype_lbl = _ftype_label(clf.funding_type)
     stage_class = _stage_tag_class(clf.research_stage)
     stage_lbl = _stage_label(clf.research_stage)
+    ftype_class = _ftype_tag_class(clf.funding_type)
+    ftype_lbl = _ftype_label(clf.funding_type)
 
     # Eligibility column
     if eligibility:
@@ -188,24 +211,28 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "")
     else:
         elig_html = '<span style="color:#aaa">—</span>'
 
+    # Score breakdown bar
+    bd_html = _breakdown_bar_html(breakdown) if breakdown else ""
+
     return f"""<tr>
       <td>
         <div class="grant-name"><a href="{url_escaped}" target="_blank">{title_escaped}</a></div>
         <div class="grant-funder">{agency_escaped}</div>
       </td>
-      <td><span class="mece-tag {ftype_class}">{ftype_lbl}</span></td>
-      <td>
-        <div class="deadline-cell">{deadline_str}</div>
-        <div><span class="urg-chip {chip_class}">{chip_label}</span></div>
-      </td>
-      <td><span class="urg-chip {chip_class}">{chip_class.replace('urg-', '')}</span></td>
       <td>
         <div class="mece-tags">
           <span class="mece-tag {stage_class}">{stage_lbl}</span>
           <span class="mece-tag {ftype_class}">{ftype_lbl}</span>
         </div>
       </td>
-      <td><span class="score-badge {score_class}">{score_val}</span></td>
+      <td>
+        <div class="deadline-cell">{deadline_str}</div>
+        <div><span class="urg-chip {chip_class}">{chip_label}</span></div>
+      </td>
+      <td>
+        <span class="score-badge {score_class}">{score_val}</span>
+        {bd_html}
+      </td>
       <td>{elig_html}</td>
     </tr>"""
 
@@ -371,16 +398,20 @@ def _build_html(
         mece_col_totals.append(col_sum)
 
     # --- Tier grant rows ---
+    scorer = RelevanceScorer()
+
     def _make_tier_rows(tier_key: str) -> list:
         rows = []
         for g in sorted(all_filtered, key=lambda x: (-x.relevance_score, x.deadline or date.max)):
             fp = g.fingerprint()
             clf = classifications.get(fp)
             if clf and clf.tier == tier_key:
+                breakdown = scorer.score_breakdown(g)
                 row_html = _build_tier_row_html(
                     g, clf,
                     elig_map.get(fp, ""),
                     reason_map.get(fp, ""),
+                    breakdown=breakdown,
                 )
                 rows.append({"row_html": row_html})
         return rows

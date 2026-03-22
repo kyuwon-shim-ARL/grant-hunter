@@ -16,7 +16,7 @@ from grant_hunter.collectors.eu_portal import EUPortalCollector
 from grant_hunter.collectors.grants_gov import GrantsGovCollector
 from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.eligibility import EligibilityEngine
-from grant_hunter.filters import filter_grants, diff_grants
+from grant_hunter.filters import score_and_rank_grants, diff_grants
 from grant_hunter.models import Grant
 from grant_hunter.profiles import get_profile
 from grant_hunter.report_generator import generate_html_report
@@ -215,13 +215,13 @@ def run_pipeline() -> dict:
     deduped = _dedup(all_current)
     logger.info("After dedup: %d grants (removed %d duplicates)", len(deduped), len(all_current) - len(deduped))
 
-    # ── 3. Keyword filtering ──────────────────────────────────────────────────
-    filtered = filter_grants(deduped, profile=profile)
+    # ── 3. Score and rank all grants ────────────────────────────────────────
+    scored = score_and_rank_grants(deduped, profile=profile)
     for src_name in stats:
-        src_grants = [g for g in filtered if g.source == src_name]
+        src_grants = [g for g in scored if g.source == src_name]
         stats[src_name]["filtered"] = len(src_grants)
 
-    # ── 4. Eligibility (scoring already done by filter_grants) ──────────────
+    # ── 4. Eligibility (scoring already done) ────────────────────────────────
     elig_engine = EligibilityEngine()
 
     eligibility_map: dict = {}
@@ -229,12 +229,12 @@ def run_pipeline() -> dict:
     score_map: dict = {}
 
     eligible_count = uncertain_count = ineligible_count = 0
-    for g in filtered:
+    for g in scored:
         fp = g.fingerprint()
         result = elig_engine.check(g)
         eligibility_map[fp] = result.status
         eligibility_reason_map[fp] = result.reason
-        score_map[fp] = g.relevance_score  # already set by filter_grants
+        score_map[fp] = g.relevance_score  # already set by score_and_rank_grants
         if result.status == "eligible":
             eligible_count += 1
         elif result.status == "uncertain":
@@ -248,14 +248,14 @@ def run_pipeline() -> dict:
     )
 
     # ── 5. Diff: detect new / changed grants ─────────────────────────────────
-    new_grants, changed_grants = diff_grants(filtered, filter_grants(_dedup(all_previous), profile=profile))
+    new_grants, changed_grants = diff_grants(scored, score_and_rank_grants(_dedup(all_previous), profile=profile))
     logger.info("New: %d | Changed: %d", len(new_grants), len(changed_grants))
 
     # ── 6. Generate HTML report ───────────────────────────────────────────────
     report_path = generate_html_report(
         new_grants=new_grants,
         changed_grants=changed_grants,
-        all_filtered=filtered,
+        all_filtered=scored,
         stats=stats,
         run_date=run_start,
         eligibility_map=eligibility_map,
@@ -265,7 +265,7 @@ def run_pipeline() -> dict:
 
     # ── 7. Generate interactive dashboard ────────────────────────────────────
     dashboard_path = generate_dashboard(
-        all_filtered=filtered,
+        all_filtered=scored,
         eligibility_map=eligibility_map,
         eligibility_reason_map=eligibility_reason_map,
         score_map=score_map,
@@ -287,7 +287,7 @@ def run_pipeline() -> dict:
         subject = f"[Grant Hunter{profile_label}] {n_new} new, {n_changed} changed AMR+AI grants – {run_start.strftime('%Y-%m-%d')}"
         body_text = (
             f"Grant Hunter found {n_new} new and {n_changed} changed grants matching AMR+AI criteria.\n"
-            f"Total relevant: {len(filtered)} | Eligible (IPK): {eligible_count} | Uncertain: {uncertain_count}\n\n"
+            f"Total relevant: {len(scored)} | Eligible (IPK): {eligible_count} | Uncertain: {uncertain_count}\n\n"
             f"See attached HTML report for details.\nDashboard: {dashboard_path}"
         )
         email_sent = _send_email_report(subject, body_text, report_path)
@@ -314,7 +314,7 @@ def run_pipeline() -> dict:
         "run_at": run_start.isoformat(),
         "total_collected": total_collected,
         "after_dedup": len(deduped),
-        "filtered": len(filtered),
+        "filtered": len(scored),
         "eligible": eligible_count,
         "uncertain": uncertain_count,
         "ineligible": ineligible_count,
@@ -348,7 +348,7 @@ def run_pipeline() -> dict:
     logger.info("SUMMARY")
     logger.info("  Collected : %d", total_collected)
     logger.info("  After dedup: %d", len(deduped))
-    logger.info("  Filtered  : %d", len(filtered))
+    logger.info("  Scored    : %d", len(scored))
     logger.info("  Eligible  : %d  Uncertain: %d  Ineligible: %d",
                 eligible_count, uncertain_count, ineligible_count)
     logger.info("  New       : %d", len(new_grants))

@@ -72,7 +72,7 @@ def _get_collector(source_name: str):
 
 def _run_collection_job(job_id: str, sources: list[str] | None, test: bool, profile_name: str = "default") -> None:
     """Background thread: run collectors one by one."""
-    from grant_hunter.filters import filter_grants
+    from grant_hunter.filters import score_and_rank_grants
     from grant_hunter.eligibility import EligibilityEngine
     from grant_hunter.scoring import RelevanceScorer
     from grant_hunter.profiles import get_profile
@@ -114,21 +114,19 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool, prof
             profile = get_profile(profile_name)
         except KeyError:
             profile = None
-        filtered = filter_grants(all_grants, profile=profile)
+        scored = score_and_rank_grants(all_grants, profile=profile)
         for src_name in source_stats:
-            src_filtered = [g for g in filtered if g.source == src_name]
-            source_stats[src_name]["filtered"] = len(src_filtered)
+            src_scored = [g for g in scored if g.source == src_name]
+            source_stats[src_name]["filtered"] = len(src_scored)
 
         elig_engine = EligibilityEngine()
-        scorer = RelevanceScorer(profile=profile)
         eligibility_map: dict = {}
         eligibility_reason_map: dict = {}
         score_map: dict = {}
         eligible = uncertain = ineligible = 0
-        for g in filtered:
+        for g in scored:
             fp = g.fingerprint()
             r = elig_engine.check(g)
-            g.relevance_score = scorer.score(g)
             eligibility_map[fp] = r.status
             eligibility_reason_map[fp] = r.reason
             score_map[fp] = g.relevance_score
@@ -141,16 +139,16 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool, prof
 
         run_date = datetime.utcnow()
         report_path = generate_html_report(
-            new_grants=filtered,
+            new_grants=scored,
             changed_grants=[],
-            all_filtered=filtered,
+            all_filtered=scored,
             stats={s: {"success": True, **v} for s, v in source_stats.items()},
             run_date=run_date,
             eligibility_map=eligibility_map,
             eligibility_reason_map=eligibility_reason_map,
         )
         dashboard_path = generate_dashboard(
-            all_filtered=filtered,
+            all_filtered=scored,
             eligibility_map=eligibility_map,
             eligibility_reason_map=eligibility_reason_map,
             score_map=score_map,
@@ -161,7 +159,7 @@ def _run_collection_job(job_id: str, sources: list[str] | None, test: bool, prof
         with _jobs_lock:
             _jobs[job_id]["result"] = {
                 "total_collected": sum(s["collected"] for s in source_stats.values()),
-                "filtered": len(filtered),
+                "filtered": len(scored),
                 "eligible": eligible,
                 "uncertain": uncertain,
                 "ineligible": ineligible,

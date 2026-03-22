@@ -1,4 +1,4 @@
-"""Regression tests for filter recall — baseline for passes_keyword_gate and filter_grants.
+"""Regression tests for filter recall — baseline for passes_keyword_gate and score_and_rank_grants.
 
 These tests capture the current filter behavior so future changes to keyword
 lists or scoring logic can be verified against a known baseline.
@@ -6,6 +6,7 @@ lists or scoring logic can be verified against a known baseline.
 
 import pytest
 from grant_hunter.filters import (
+    score_and_rank_grants,
     filter_grants,
     passes_keyword_gate,
     AMR_CORE_KEYWORDS,
@@ -39,7 +40,7 @@ def tier2_amr_only_grant():
     """Core AMR keyword, no AI — should always be tier2.
 
     Minimal description (identical base text to tier2_amr_drug_grant) so the
-    0.5x penalty comparison is not confounded by different base scores.
+    scoring comparison is not confounded by different base scores.
     """
     return make_grant(
         id="RECALL-TIER2-001",
@@ -51,10 +52,9 @@ def tier2_amr_only_grant():
 
 @pytest.fixture
 def tier2_amr_drug_grant():
-    """Core AMR + drug_discovery keywords, no AI — tier2 with 0.7x penalty.
+    """Core AMR + drug_discovery keywords, no AI — tier2 with drug bonus.
 
     Identical base AMR text to tier2_amr_only_grant, plus drug-discovery terms.
-    Same base score ensures the only difference is the 0.7x vs 0.5x multiplier.
     """
     return make_grant(
         id="RECALL-TIER2-DRUG-001",
@@ -69,7 +69,7 @@ def tier2_amr_drug_grant():
 
 @pytest.fixture
 def skip_ai_only_grant():
-    """AI keywords only, no AMR — must be skipped."""
+    """AI keywords only, no AMR — classified skip."""
     return make_grant(
         id="RECALL-SKIP-AI-001",
         title="Deep learning for medical image segmentation",
@@ -83,7 +83,7 @@ def skip_ai_only_grant():
 
 @pytest.fixture
 def skip_unrelated_grant():
-    """No AMR or AI keywords — must be skipped."""
+    """No AMR or AI keywords — classified skip."""
     return make_grant(
         id="RECALL-SKIP-NONE-001",
         title="Vet-LIRN Capacity-Building Project and Equipment Grants (U18)",
@@ -204,90 +204,101 @@ class TestKeywordListHealth:
 
 
 # ---------------------------------------------------------------------------
-# filter_grants — inclusion / exclusion
+# score_and_rank_grants — inclusion (all grants returned)
 # ---------------------------------------------------------------------------
 
-class TestFilterGrantsInclusion:
+class TestScoreAndRankInclusion:
     def test_tier1_grant_passes_filter(self, tier1_grant):
-        """Tier1 (AMR+AI) grant is included in filter output."""
-        result = filter_grants([tier1_grant])
+        """Tier1 (AMR+AI) grant is included in score_and_rank_grants output."""
+        result = score_and_rank_grants([tier1_grant])
         assert len(result) == 1
         assert result[0].id == tier1_grant.id
 
     def test_tier2_grant_passes_filter(self, tier2_amr_only_grant):
-        """Tier2 (AMR-only) grant is included in filter output."""
-        result = filter_grants([tier2_amr_only_grant])
+        """Tier2 (AMR-only) grant is included in score_and_rank_grants output."""
+        result = score_and_rank_grants([tier2_amr_only_grant])
         assert len(result) == 1
         assert result[0].id == tier2_amr_only_grant.id
 
-    def test_skip_grant_excluded_from_filter(self, skip_unrelated_grant):
-        """Grant classified skip is excluded from filter output."""
-        result = filter_grants([skip_unrelated_grant])
-        assert len(result) == 0
+    def test_skip_grant_included_with_low_score(self, skip_unrelated_grant):
+        """Grant classified skip is still included but receives a near-zero score."""
+        result = score_and_rank_grants([skip_unrelated_grant])
+        assert len(result) == 1
+        assert result[0].id == skip_unrelated_grant.id
+        assert result[0].relevance_score >= 0.0
+        # Score should be very low — well below any AMR-matching grant
+        assert result[0].relevance_score < 0.2
 
-    def test_ai_only_grant_excluded_from_filter(self, skip_ai_only_grant):
-        """AI-only grant is excluded from filter output."""
-        result = filter_grants([skip_ai_only_grant])
-        assert len(result) == 0
+    def test_ai_only_grant_included_with_lower_score_than_amr_ai(
+        self, skip_ai_only_grant, tier1_grant
+    ):
+        """AI-only grant is included but scores below an AMR+AI grant."""
+        result = score_and_rank_grants([tier1_grant, skip_ai_only_grant])
+        tier1_score = next(g.relevance_score for g in result if g.id == tier1_grant.id)
+        ai_only_score = next(g.relevance_score for g in result if g.id == skip_ai_only_grant.id)
+        assert ai_only_score < tier1_score
 
-    def test_mixed_batch_returns_only_passing_grants(
+    def test_mixed_batch_returns_all_four_grants_sorted_by_score(
         self, tier1_grant, tier2_amr_only_grant, skip_unrelated_grant, skip_ai_only_grant
     ):
-        """filter_grants on a mixed batch returns only tier1 and tier2 grants."""
+        """score_and_rank_grants on a mixed batch returns ALL 4 grants, AMR+AI first."""
         all_grants = [tier1_grant, tier2_amr_only_grant, skip_unrelated_grant, skip_ai_only_grant]
-        result = filter_grants(all_grants)
-        result_ids = {g.id for g in result}
+        result = score_and_rank_grants(all_grants)
+        assert len(result) == 4
+        result_ids = [g.id for g in result]
         assert tier1_grant.id in result_ids
         assert tier2_amr_only_grant.id in result_ids
-        assert skip_unrelated_grant.id not in result_ids
-        assert skip_ai_only_grant.id not in result_ids
+        assert skip_unrelated_grant.id in result_ids
+        assert skip_ai_only_grant.id in result_ids
+        # AMR+AI (tier1) must be ranked first
+        assert result[0].id == tier1_grant.id
+        # Scores must be in descending order
+        scores = [g.relevance_score for g in result]
+        assert scores == sorted(scores, reverse=True)
 
 
 # ---------------------------------------------------------------------------
-# filter_grants — tier2 penalty applied to relevance_score
+# score_and_rank_grants — score ranking
 # ---------------------------------------------------------------------------
 
-class TestFilterGrantsTier2Penalty:
-    def test_tier2_amr_only_score_below_0_4(self, tier2_amr_only_grant):
-        """Pure AMR tier2 grant (no drug keywords) scores below 0.4 after 0.5x penalty."""
-        result = filter_grants([tier2_amr_only_grant])
-        assert result[0].relevance_score < 0.4
-
-    def test_tier2_amr_drug_scores_higher_than_pure_amr_tier2(
-        self, tier2_amr_only_grant, tier2_amr_drug_grant
-    ):
-        """AMR+drug_discovery tier2 scores higher than pure AMR tier2 (0.7x > 0.5x multiplier).
-
-        Both fixtures share the same base AMR text so any score difference is
-        attributable only to the penalty multiplier, not to different keyword hits.
-        """
-        pure_result = filter_grants([tier2_amr_only_grant])
-        drug_result = filter_grants([tier2_amr_drug_grant])
-        assert drug_result[0].relevance_score > pure_result[0].relevance_score
-
-    def test_tier1_scores_higher_than_tier2(self, tier1_grant, tier2_amr_only_grant):
-        """Tier1 grant scores higher than a comparable tier2 grant."""
-        result = filter_grants([tier1_grant, tier2_amr_only_grant])
+class TestScoreRanking:
+    def test_amr_ai_scores_above_amr_only(self, tier1_grant, tier2_amr_only_grant):
+        """AMR+AI grant (tier1) scores strictly above AMR-only grant (tier2)."""
+        result = score_and_rank_grants([tier1_grant, tier2_amr_only_grant])
         tier1_score = next(g.relevance_score for g in result if g.id == tier1_grant.id)
         tier2_score = next(g.relevance_score for g in result if g.id == tier2_amr_only_grant.id)
         assert tier1_score > tier2_score
 
-    def test_tier2_score_is_positive(self, tier2_amr_only_grant):
-        """Tier2 grant receives a positive relevance score after penalty."""
-        result = filter_grants([tier2_amr_only_grant])
-        assert result[0].relevance_score > 0.0
+    def test_amr_only_scores_above_unrelated(self, tier2_amr_only_grant, skip_unrelated_grant):
+        """AMR-only grant scores strictly above an unrelated (skip) grant."""
+        result = score_and_rank_grants([tier2_amr_only_grant, skip_unrelated_grant])
+        amr_score = next(g.relevance_score for g in result if g.id == tier2_amr_only_grant.id)
+        unrelated_score = next(g.relevance_score for g in result if g.id == skip_unrelated_grant.id)
+        assert amr_score > unrelated_score
+
+    def test_all_grants_receive_scores(
+        self, tier1_grant, tier2_amr_only_grant, skip_unrelated_grant, skip_ai_only_grant
+    ):
+        """Every grant returned by score_and_rank_grants has relevance_score set."""
+        all_grants = [tier1_grant, tier2_amr_only_grant, skip_unrelated_grant, skip_ai_only_grant]
+        result = score_and_rank_grants(all_grants)
+        for grant in result:
+            assert grant.relevance_score is not None, (
+                f"Grant {grant.id} has no relevance_score"
+            )
+            assert isinstance(grant.relevance_score, float)
 
 
 # ---------------------------------------------------------------------------
-# filter_grants — output ordering
+# score_and_rank_grants — output ordering
 # ---------------------------------------------------------------------------
 
 class TestFilterGrantsOrdering:
     def test_results_sorted_by_relevance_score_descending(
         self, tier1_grant, tier2_amr_only_grant, tier2_amr_drug_grant
     ):
-        """filter_grants returns grants sorted by relevance_score descending."""
-        result = filter_grants([tier2_amr_only_grant, tier1_grant, tier2_amr_drug_grant])
+        """score_and_rank_grants returns grants sorted by relevance_score descending."""
+        result = score_and_rank_grants([tier2_amr_only_grant, tier1_grant, tier2_amr_drug_grant])
         scores = [g.relevance_score for g in result]
         assert scores == sorted(scores, reverse=True)
 

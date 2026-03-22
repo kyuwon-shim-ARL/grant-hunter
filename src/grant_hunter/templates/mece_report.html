@@ -725,6 +725,50 @@ body {
   .grant-table td:nth-child(4) { display: none; }
 }
 
+/* Score breakdown bar */
+.breakdown-bar {
+  display: flex;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: .35rem;
+  background: var(--surface2);
+  min-width: 60px;
+}
+.bd-seg { height: 100%; min-width: 1px; }
+.bd-amr  { background: #1565c0; }
+.bd-ai   { background: #7b1fa2; }
+.bd-drug { background: #2e7d32; }
+.bd-amt  { background: #e65100; }
+.breakdown-empty { width: 100%; background: var(--border); height: 100%; }
+.breakdown-legend {
+  display: flex;
+  gap: .6rem;
+  font-size: .6rem;
+  color: var(--text-muted);
+  margin-top: .25rem;
+}
+.breakdown-legend span::before {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  margin-right: .2rem;
+  vertical-align: middle;
+}
+.bl-amr::before  { background: #1565c0; }
+.bl-ai::before   { background: #7b1fa2; }
+.bl-drug::before { background: #2e7d32; }
+.bl-amt::before  { background: #e65100; }
+
+/* Collapsed tier details */
+.tier-collapsed summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0;
+}
+.tier-collapsed summary::-webkit-details-marker { display: none; }
+
 /* Inline SVG chart wrapper */
 svg text { font-family: var(--font-ui); }
 </style>
@@ -945,6 +989,13 @@ svg text { font-family: var(--font-ui); }
     <span class="section-label-text">과제 목록 — 티어별 상세</span>
     <span class="section-label-line"></span>
   </div>
+  <div class="breakdown-legend" style="margin-bottom:.75rem;">
+    <span>점수 구성:</span>
+    <span class="bl-amr">AMR</span>
+    <span class="bl-ai">AI</span>
+    <span class="bl-drug">Drug</span>
+    <span class="bl-amt">Amount</span>
+  </div>
 
   {% if tier1_grants %}
   <div class="tier-section tier-1">
@@ -961,11 +1012,9 @@ svg text { font-family: var(--font-ui); }
         <table class="grant-table">
           <thead>
             <tr>
-              <th style="width:36%">과제명</th>
-              <th>재원</th>
+              <th style="width:38%">과제명</th>
+              <th>분류</th>
               <th>마감</th>
-              <th>긴급도</th>
-              <th>MECE 분류</th>
               <th>점수</th>
               <th>적격성</th>
             </tr>
@@ -997,11 +1046,9 @@ svg text { font-family: var(--font-ui); }
         <table class="grant-table">
           <thead>
             <tr>
-              <th style="width:36%">과제명</th>
-              <th>재원</th>
+              <th style="width:38%">과제명</th>
+              <th>분류</th>
               <th>마감</th>
-              <th>긴급도</th>
-              <th>MECE 분류</th>
               <th>점수</th>
               <th>적격성</th>
             </tr>
@@ -1017,76 +1064,88 @@ svg text { font-family: var(--font-ui); }
   </div>
   {% endif %}
 
-  <!-- TIER 3 -->
-  {% if tier3_grants %}
-  <div class="tier-section tier-3">
-    <div class="tier-header">
-      <div class="tier-badge">T3</div>
-      <div>
-        <div class="tier-title">Tier 3 — Worth Monitoring · 모니터링</div>
-        <div class="tier-subtitle">주기적 확인 권장</div>
+  <!-- TIER 3 + 4 (collapsed by default) -->
+  {% if tier3_grants or tier4_grants %}
+  <details class="tier-collapsed">
+    <summary>
+      <div class="tier-section tier-3" style="margin-bottom:0;">
+        <div class="tier-header" style="border-radius:var(--radius);">
+          <div class="tier-badge" style="background:var(--t3);">T3</div>
+          <div>
+            <div class="tier-title" style="color:var(--t3);">Tier 3+4 — 추가 과제</div>
+            <div class="tier-subtitle">클릭하여 펼치기 · {{ (tier3_grants | length) + (tier4_grants | length) }}건</div>
+          </div>
+          <div class="tier-count">{{ (tier3_grants | length) + (tier4_grants | length) }}건</div>
+        </div>
       </div>
-      <div class="tier-count">{{ kpi.tier3 }}건</div>
-    </div>
-    <div class="grant-table-wrap">
-      <div class="table-scroll">
-        <table class="grant-table">
-          <thead>
-            <tr>
-              <th style="width:36%">과제명</th>
-              <th>재원</th>
-              <th>마감</th>
-              <th>긴급도</th>
-              <th>MECE 분류</th>
-              <th>점수</th>
-              <th>적격성</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for g in tier3_grants %}
-            {{ g.row_html | safe }}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+    </summary>
 
-  <!-- TIER 4 (Low Priority) -->
-  {% if tier4_grants %}
-  <div class="tier-section" style="margin-bottom:1.75rem;">
-    <div class="tier-header" style="background:var(--surface2); border:1px solid var(--border); border-bottom:none; border-radius:var(--radius) var(--radius) 0 0;">
-      <div class="tier-badge" style="background:var(--text-muted);">T4</div>
-      <div>
-        <div class="tier-title" style="color:var(--text-muted);">Tier 4 — Low Priority · 낮은 우선순위</div>
-        <div class="tier-subtitle">추가 검토 불필요</div>
+    {% if tier3_grants %}
+    <div class="tier-section tier-3" style="margin-top:-.5rem;">
+      <div class="tier-header">
+        <div class="tier-badge">T3</div>
+        <div>
+          <div class="tier-title">Tier 3 — Worth Monitoring · 모니터링</div>
+          <div class="tier-subtitle">주기적 확인 권장</div>
+        </div>
+        <div class="tier-count">{{ kpi.tier3 }}건</div>
       </div>
-      <div class="tier-count">{{ tier4_grants | length }}건</div>
-    </div>
-    <div class="grant-table-wrap">
-      <div class="table-scroll">
-        <table class="grant-table">
-          <thead>
-            <tr>
-              <th style="width:36%">과제명</th>
-              <th>재원</th>
-              <th>마감</th>
-              <th>긴급도</th>
-              <th>MECE 분류</th>
-              <th>점수</th>
-              <th>적격성</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for g in tier4_grants %}
-            {{ g.row_html | safe }}
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="grant-table-wrap">
+        <div class="table-scroll">
+          <table class="grant-table">
+            <thead>
+              <tr>
+                <th style="width:38%">과제명</th>
+                <th>분류</th>
+                <th>마감</th>
+                <th>점수</th>
+                <th>적격성</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for g in tier3_grants %}
+              {{ g.row_html | safe }}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
+    {% endif %}
+
+    {% if tier4_grants %}
+    <div class="tier-section" style="margin-bottom:1.75rem;">
+      <div class="tier-header" style="background:var(--surface2); border:1px solid var(--border); border-bottom:none; border-radius:var(--radius) var(--radius) 0 0;">
+        <div class="tier-badge" style="background:var(--text-muted);">T4</div>
+        <div>
+          <div class="tier-title" style="color:var(--text-muted);">Tier 4 — Low Priority · 낮은 우선순위</div>
+          <div class="tier-subtitle">추가 검토 불필요</div>
+        </div>
+        <div class="tier-count">{{ tier4_grants | length }}건</div>
+      </div>
+      <div class="grant-table-wrap">
+        <div class="table-scroll">
+          <table class="grant-table">
+            <thead>
+              <tr>
+                <th style="width:38%">과제명</th>
+                <th>분류</th>
+                <th>마감</th>
+                <th>점수</th>
+                <th>적격성</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for g in tier4_grants %}
+              {{ g.row_html | safe }}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </details>
   {% endif %}
 
   {% if not tier1_grants and not tier2_grants and not tier3_grants and not tier4_grants %}
