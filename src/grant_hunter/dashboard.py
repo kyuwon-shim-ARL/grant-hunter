@@ -723,7 +723,7 @@ a:hover .ext-icon {{ opacity: 1; }}
       var arrow = expandedId === r.id ? '&#9660;' : '&#9654;';
       html += '<tr' + (expandedId === r.id ? ' style="background:#f0f2ff"' : '') + '>';
       html += '<td class="cb-col"><input type="checkbox" class="row-cb" data-id="' + r.id + '"' + ck + '></td>';
-      html += '<td class="td-title"><a href="' + r.url + '" target="_blank">' + r.title + '<span class="ext-icon">&#8599;</span></a>';
+      html += '<td class="td-title"><a href="' + r.url + '" target="_blank" rel="noopener noreferrer">' + r.title + '<span class="ext-icon">&#8599;</span></a>';
       if (r.desc) html += '<div class="td-desc">' + r.desc + '</div>';
       html += '<a href="#" class="detail-toggle" data-id="' + r.id + '">' + arrow + ' Details</a>';
       html += '</td>';

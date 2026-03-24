@@ -17,7 +17,7 @@ from grant_hunter.models import Grant
 if TYPE_CHECKING:
     from grant_hunter.profiles import ResearcherProfile
 
-# ── Keyword loading ───────────────────────────────────────────────────────────
+# ── Keyword loading (lazy, reloadable) ───────────────────────────────────────
 
 
 def _load_keywords() -> dict:
@@ -35,18 +35,33 @@ def _flatten(kw: dict, category: str) -> List[str]:
     return words
 
 
-_KW = _load_keywords()
-_AMR_KW: List[str] = _flatten(_KW, "amr")
-_AI_KW: List[str] = _flatten(_KW, "ai")
-_DRUG_KW: List[str] = _flatten(_KW, "drug_discovery")
+_keywords_cache: Optional[dict] = None
 
-# Category weights must sum to 1.0
-_WEIGHTS = {
-    "amr": 0.40,
-    "ai": 0.30,
-    "drug": 0.20,
-    "amount": 0.10,
-}
+
+def _get_keywords() -> dict:
+    global _keywords_cache
+    if _keywords_cache is None:
+        _keywords_cache = _load_keywords()
+    return _keywords_cache
+
+
+def _reload_keywords() -> dict:
+    global _keywords_cache
+    _keywords_cache = _load_keywords()
+    return _keywords_cache
+
+
+def _get_amr_kw() -> List[str]:
+    return _flatten(_get_keywords(), "amr")
+
+
+def _get_ai_kw() -> List[str]:
+    return _flatten(_get_keywords(), "ai")
+
+
+def _get_drug_kw() -> List[str]:
+    return _flatten(_get_keywords(), "drug_discovery")
+
 
 # Amount thresholds for bonus (USD)
 _AMOUNT_TIERS = [
@@ -137,25 +152,31 @@ class RelevanceScorer:
     """Score a Grant on 0.0–1.0 relevance to IPK's AMR+AI research focus."""
 
     def __init__(self, profile: Optional["ResearcherProfile"] = None) -> None:
-        self._weights = dict(_WEIGHTS)
         if profile is not None:
             self._weights = dict(profile.weights)
+        else:
+            from grant_hunter.profiles import get_default_profile
+            self._weights = dict(get_default_profile().weights)
 
     def score(self, grant: Grant) -> float:
         """Return relevance score in [0.0, 1.0]."""
         searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
 
-        amr_s = _keyword_score(searchable, _AMR_KW)
-        ai_s = _keyword_score(searchable, _AI_KW)
-        drug_s = _keyword_score(searchable, _DRUG_KW)
+        amr_s = _keyword_score(searchable, _get_amr_kw())
+        ai_s = _keyword_score(searchable, _get_ai_kw())
+        drug_s = _keyword_score(searchable, _get_drug_kw())
         amt_s = _amount_bonus(grant)
 
-        score = (
+        kw_total = (
             self._weights["amr"] * amr_s
             + self._weights["ai"] * ai_s
             + self._weights["drug"] * drug_s
-            + self._weights["amount"] * amt_s
         )
+        # Block amount-only boosting: no keyword relevance → no score
+        if kw_total == 0:
+            amt_s = 0.0
+
+        score = kw_total + self._weights["amount"] * amt_s
 
         return round(min(score, 1.0), 4)
 
@@ -163,18 +184,49 @@ class RelevanceScorer:
         """Return per-category scores for debugging/display."""
         searchable = f"{grant.title} {grant.description} {' '.join(grant.keywords)}"
         return {
-            "amr": round(_keyword_score(searchable, _AMR_KW), 4),
-            "ai": round(_keyword_score(searchable, _AI_KW), 4),
-            "drug": round(_keyword_score(searchable, _DRUG_KW), 4),
-            "amount_bonus": round(_amount_bonus(grant), 4),
+            "amr": round(min(_keyword_score(searchable, _get_amr_kw()), 1.0), 4),
+            "ai": round(min(_keyword_score(searchable, _get_ai_kw()), 1.0), 4),
+            "drug": round(min(_keyword_score(searchable, _get_drug_kw()), 1.0), 4),
+            "amount_bonus": round(min(_amount_bonus(grant), 1.0), 4),
             "total": self.score(grant),
         }
 
 
-# Module-level singleton for convenience
-_scorer = RelevanceScorer()
+# ── Factory function (lazy load, reloadable) ─────────────────────────────────
+
+_scorer_instance: Optional[RelevanceScorer] = None
+
+
+def get_scorer(profile: Optional["ResearcherProfile"] = None, reload: bool = False) -> RelevanceScorer:
+    """Get a RelevanceScorer instance.
+
+    Args:
+        profile: Researcher profile for weight customization. None uses default.
+        reload: If True, reload keywords.json and create a fresh instance.
+
+    Returns:
+        RelevanceScorer instance.
+    """
+    global _scorer_instance
+    if reload:
+        _reload_keywords()
+        _scorer_instance = None
+    if profile is not None:
+        return RelevanceScorer(profile)
+    if _scorer_instance is None:
+        _scorer_instance = RelevanceScorer()
+    return _scorer_instance
+
+
+def keyword_counts() -> Dict[str, int]:
+    """Return current keyword counts per category."""
+    return {
+        "amr": len(_get_amr_kw()),
+        "ai": len(_get_ai_kw()),
+        "drug": len(_get_drug_kw()),
+    }
 
 
 def score_grant_normalized(grant: Grant) -> float:
     """Convenience function: return 0.0–1.0 relevance score."""
-    return _scorer.score(grant)
+    return get_scorer().score(grant)

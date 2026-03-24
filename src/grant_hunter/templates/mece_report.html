@@ -771,6 +771,25 @@ body {
 
 /* Inline SVG chart wrapper */
 svg text { font-family: var(--font-ui); }
+
+/* Keyword score pills */
+.kw-pill { display:inline-block; font-size:.65rem; padding:1px 5px; border-radius:8px; margin:1px; font-weight:600; }
+.amr-pill { background:#e8f5e9; color:#2e7d32; }
+.ai-pill  { background:#e3f2fd; color:#1565c0; }
+.drug-pill { background:#fce4ec; color:#c62828; }
+
+/* Calendar view */
+.cal-wrapper { display:flex; gap:20px; flex-wrap:wrap; }
+.cal-month { min-width:220px; }
+.cal-month-title { font-weight:600; font-size:.95em; margin-bottom:6px; color:var(--text); }
+.cal-header, .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.cal-header > div { text-align:center; font-size:.7em; color:#888; padding:2px 0; font-weight:600; }
+.cal-cell { position:relative; text-align:center; padding:4px 2px; font-size:.78em; border-radius:4px; min-height:28px; cursor:default; }
+.cal-cell.empty { background:transparent; }
+.cal-cell.today { background:#e3f2fd; font-weight:700; }
+.cal-cell.has-deadline { background:#fff3e0; border:1px solid #ffb74d; cursor:pointer; }
+.cal-cell.has-deadline:hover { background:#ffe0b2; }
+.cal-badge { position:absolute; top:1px; right:2px; background:#e65100; color:white; font-size:.65em; width:14px; height:14px; border-radius:50%; display:flex; align-items:center; justify-content:center; line-height:1; }
 </style>
 </head>
 <body>
@@ -791,9 +810,11 @@ svg text { font-family: var(--font-ui); }
     <div class="header-right">
       <div class="header-badge">{{ kpi.total }}건 추적 중</div>
       <div class="header-date">생성일 {{ run_date }}</div>
+      <button id="btn-md-export" onclick="exportMarkdown()" style="margin-top:.5rem; padding:.35rem .9rem; background:var(--teal); color:#fff; border:none; border-radius:var(--radius-xs); cursor:pointer; font-size:.8rem; font-family:var(--font-ui);">⬇ Export as Markdown</button>
     </div>
   </div>
 </header>
+<script id="grants-export-data" type="application/json">{{ grants_for_export | tojson }}</script>
 
 <!-- ═══════════════════════════════════════
      PAGE
@@ -958,15 +979,15 @@ svg text { font-family: var(--font-ui); }
         </table>
       </div>
       <div class="mece-legend">
-        <span class="mece-legend-label">밀도:</span>
+        <span class="mece-legend-label">셀 색상 = 해당 교차 영역의 과제 수:</span>
         <div class="mece-legend-swatch heat-0" style="border-color:var(--border)"></div>
-        <span class="mece-legend-label">0</span>
+        <span class="mece-legend-label">0건</span>
         <div class="mece-legend-swatch heat-1"></div>
-        <span class="mece-legend-label">1</span>
+        <span class="mece-legend-label">1건</span>
         <div class="mece-legend-swatch heat-2"></div>
-        <span class="mece-legend-label">2</span>
+        <span class="mece-legend-label">2건</span>
         <div class="mece-legend-swatch heat-hot"></div>
-        <span class="mece-legend-label">5+</span>
+        <span class="mece-legend-label">5건+</span>
       </div>
     </div>
   </div>
@@ -981,8 +1002,31 @@ svg text { font-family: var(--font-ui); }
       <span class="card-title-icon">📅</span>
       Deadline Timeline — 월별 마감 분포
     </div>
-    <p style="color:var(--text-muted); font-size:.85rem; padding:.5rem 0;">Timeline coming soon.</p>
+    {% if timeline_months %}
+    <div class="timeline-svg-wrap" style="display:flex; align-items:flex-end; gap:4px; height:180px; padding-top:1rem;">
+      {% for m in timeline_months %}
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; min-width:48px;">
+        <span style="font-size:.7rem; font-weight:600; color:var(--text); margin-bottom:4px;">{{ m.count }}</span>
+        <div style="width:100%; max-width:42px; background: linear-gradient(180deg, var(--navy-light) 0%, var(--teal) 100%); border-radius:4px 4px 0 0; height:{{ (m.count / timeline_max * 140)|int }}px; min-height:4px; transition: height .3s;"></div>
+        <span style="font-size:.65rem; color:var(--text-muted); margin-top:6px; white-space:nowrap;">{{ m.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted); font-size:.85rem; padding:.5rem 0;">마감일 데이터가 없습니다.</p>
+    {% endif %}
   </div>
+
+  <!-- 90-DAY UPCOMING DEADLINES — CALENDAR VIEW -->
+  {% if calendar_html %}
+  <div class="card full-card" style="margin-bottom:1.75rem;">
+    <div class="card-title" style="margin-bottom:.75rem;">
+      <span class="card-title-icon">📆</span>
+      Upcoming Deadlines (next 90 days)
+    </div>
+    {{ calendar_html | safe }}
+  </div>
+  {% endif %}
 
   <!-- TIER 1 -->
   <div class="section-label">
@@ -1012,8 +1056,10 @@ svg text { font-family: var(--font-ui); }
         <table class="grant-table">
           <thead>
             <tr>
-              <th style="width:38%">과제명</th>
+              <th style="width:32%">과제명</th>
               <th>분류</th>
+              <th>금액</th>
+              <th>키워드</th>
               <th>마감</th>
               <th>점수</th>
               <th>적격성</th>
@@ -1046,8 +1092,10 @@ svg text { font-family: var(--font-ui); }
         <table class="grant-table">
           <thead>
             <tr>
-              <th style="width:38%">과제명</th>
+              <th style="width:32%">과제명</th>
               <th>분류</th>
+              <th>금액</th>
+              <th>키워드</th>
               <th>마감</th>
               <th>점수</th>
               <th>적격성</th>
@@ -1197,6 +1245,40 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+function exportMarkdown() {
+  var dataEl = document.getElementById('grants-export-data');
+  var grants = JSON.parse(dataEl.textContent || '[]');
+  var tiers = ['tier1', 'tier2', 'tier3', 'tier4'];
+  var tierLabels = {
+    'tier1': 'Tier 1 — Must Apply',
+    'tier2': 'Tier 2 — Strong Fit',
+    'tier3': 'Tier 3 — Monitor',
+    'tier4': 'Tier 4 — Low Priority'
+  };
+  var lines = ['# Grant Hunter Report', '## Date: ' + document.querySelector('.header-date').textContent.replace('생성일 ', ''), ''];
+  tiers.forEach(function(tier) {
+    var items = grants.filter(function(g) { return g.tier === tier; });
+    if (!items.length) return;
+    lines.push('### ' + tierLabels[tier]);
+    lines.push('| 과제명 | 기관 | 점수 | 마감일 | 관련성 | URL |');
+    lines.push('|--------|------|------|--------|--------|-----|');
+    items.forEach(function(g) {
+      var title = (g.title || '').replace(/\|/g, '\\|');
+      var agency = (g.agency || '').replace(/\|/g, '\\|');
+      var reason = (g.reason || '').replace(/\|/g, '\\|');
+      lines.push('| ' + title + ' | ' + agency + ' | ' + g.score + ' | ' + (g.deadline || 'N/A') + ' | ' + reason + ' | ' + (g.url || '') + ' |');
+    });
+    lines.push('');
+  });
+  var md = lines.join('\n');
+  var blob = new Blob([md], {type: 'text/markdown'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'grant_hunter_report.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 </script>
 </body>
 </html>

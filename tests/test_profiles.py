@@ -1,7 +1,7 @@
 """Tests for researcher profile presets and personalized scoring."""
 
 import pytest
-from grant_hunter.profiles import PROFILES, ResearcherProfile, get_profile, list_profiles
+from grant_hunter.profiles import PROFILES, ResearcherProfile, get_profile, list_profiles, create_profile, get_default_profile, _CUSTOM_PROFILES
 from grant_hunter.scoring import RelevanceScorer
 from tests.conftest import make_grant
 
@@ -24,10 +24,10 @@ def test_all_preset_profiles_have_required_keys():
         )
 
 
-def test_list_profiles_returns_all_five():
+def test_list_profiles_returns_all_presets():
     result = list_profiles()
-    assert len(result) == 5
-    assert set(result.keys()) == {"default", "wetlab_amr", "computational", "translational", "clinical"}
+    preset_names = {"default", "wetlab_amr", "computational", "translational", "clinical"}
+    assert preset_names.issubset(set(result.keys()))
 
 
 def test_list_profiles_returns_descriptions():
@@ -108,7 +108,7 @@ def _make_drug_grant(gid="DRUG-001"):
 def test_default_scorer_no_args():
     """RelevanceScorer() with no args uses default weights (backward compat)."""
     scorer = RelevanceScorer()
-    assert scorer._weights["amr"] == 0.45 or scorer._weights["amr"] == 0.40
+    assert scorer._weights["amr"] == 0.40
     # Key point: weights exist and sum to 1.0
     total = sum(scorer._weights.values())
     assert abs(total - 1.0) <= 0.01
@@ -192,3 +192,101 @@ def test_score_breakdown_uses_profile_weights():
         + profile.weights["amount"] * bd["amount_bonus"]
     )
     assert abs(bd["total"] - round(min(expected, 1.0), 4)) <= 0.001
+
+
+# ── Custom profile creation (T1-3) ───────────────────────────────────────────
+
+@pytest.fixture(autouse=False)
+def clean_custom_profiles():
+    """Clear custom profiles after each test that uses this fixture."""
+    _CUSTOM_PROFILES.clear()
+    yield
+    _CUSTOM_PROFILES.clear()
+
+
+def test_get_default_profile():
+    profile = get_default_profile()
+    assert profile.name == "Default (Balanced)"
+    assert profile.weights["amr"] == 0.40
+
+
+def test_create_profile_and_retrieve(clean_custom_profiles):
+    weights = {"amr": 0.50, "ai": 0.20, "drug": 0.20, "amount": 0.10}
+    profile = create_profile("my_custom", weights, "Test custom profile")
+    assert profile.name == "my_custom"
+    assert profile.weights == weights
+    # Retrievable via get_profile
+    retrieved = get_profile("my_custom")
+    assert retrieved is profile
+
+
+def test_create_profile_appears_in_list(clean_custom_profiles):
+    create_profile("listed_profile", {"amr": 0.25, "ai": 0.25, "drug": 0.25, "amount": 0.25})
+    result = list_profiles()
+    assert "listed_profile" in result
+
+
+def test_create_profile_rejects_preset_name(clean_custom_profiles):
+    with pytest.raises(ValueError, match="Cannot override preset"):
+        create_profile("default", {"amr": 0.40, "ai": 0.30, "drug": 0.20, "amount": 0.10})
+
+
+def test_create_profile_rejects_invalid_weights(clean_custom_profiles):
+    with pytest.raises(ValueError, match="Weights must sum to 1.0"):
+        create_profile("bad_weights", {"amr": 0.50, "ai": 0.50, "drug": 0.50, "amount": 0.50})
+
+
+# ── Keyword reload (T1-2) ────────────────────────────────────────────────────
+
+def test_get_scorer_factory():
+    from grant_hunter.scoring import get_scorer
+    scorer = get_scorer()
+    assert isinstance(scorer, RelevanceScorer)
+    # Same instance returned for default profile
+    scorer2 = get_scorer()
+    assert scorer is scorer2
+
+
+def test_get_scorer_reload():
+    from grant_hunter.scoring import get_scorer, keyword_counts
+    counts_before = keyword_counts()
+    scorer = get_scorer(reload=True)
+    counts_after = keyword_counts()
+    assert isinstance(scorer, RelevanceScorer)
+    assert counts_before == counts_after  # same file, same counts
+
+
+def test_keyword_counts_returns_categories():
+    from grant_hunter.scoring import keyword_counts
+    counts = keyword_counts()
+    assert "amr" in counts
+    assert "ai" in counts
+    assert "drug" in counts
+    assert all(isinstance(v, int) for v in counts.values())
+
+
+# ── Amount-only blocking (T0-3) ──────────────────────────────────────────────
+
+def test_amount_only_grant_gets_zero_score():
+    """Grant with funding but no keyword matches should score 0."""
+    grant = make_grant(
+        id="AMOUNT-ONLY",
+        title="Infrastructure Development Project",
+        source="grants_gov",
+        description="General purpose building renovation and maintenance project.",
+        amount_max=5_000_000,
+    )
+    scorer = RelevanceScorer()
+    assert scorer.score(grant) == 0.0
+
+
+# ── Breakdown clamp (T0-4) ───────────────────────────────────────────────────
+
+def test_breakdown_components_clamped_to_one():
+    """All score_breakdown components should be <= 1.0."""
+    grant = _make_amr_grant()
+    scorer = RelevanceScorer()
+    bd = scorer.score_breakdown(grant)
+    for key, value in bd.items():
+        if key != "total":
+            assert value <= 1.0, f"breakdown['{key}'] = {value} exceeds 1.0"

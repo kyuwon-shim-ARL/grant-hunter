@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -214,16 +214,50 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
     # Score breakdown bar
     bd_html = _breakdown_bar_html(breakdown) if breakdown else ""
 
+    # Relevance reason one-liner
+    reason_parts = []
+    if breakdown:
+        if breakdown.get("amr", 0) >= 0.3:
+            reason_parts.append("AMR 키워드 강함")
+        if breakdown.get("ai", 0) >= 0.3:
+            reason_parts.append("AI 관련성 높음")
+        if breakdown.get("drug", 0) >= 0.3:
+            reason_parts.append("Drug 연구 적합")
+        if breakdown.get("amount_bonus", 0) >= 0.1:
+            reason_parts.append("지원금 규모 우수")
+    reason_inline = ", ".join(reason_parts) if reason_parts else ""
+    reason_div = (
+        f'<div class="grant-reason" style="color:#666; font-size:.75rem; margin-top:2px;">{html.escape(reason_inline)}</div>'
+        if reason_inline else ""
+    )
+
+    # Amount column
+    amount_str = _fmt_amount(g.amount_max or g.amount_min)
+
+    # Keyword score pills
+    amr_pct = f"{breakdown.get('amr', 0):.2f}" if breakdown else "0.00"
+    ai_pct = f"{breakdown.get('ai', 0):.2f}" if breakdown else "0.00"
+    drug_pct = f"{breakdown.get('drug', 0):.2f}" if breakdown else "0.00"
+
     return f"""<tr>
       <td>
         <div class="grant-name"><a href="{url_escaped}" target="_blank">{title_escaped}</a></div>
         <div class="grant-funder">{agency_escaped}</div>
+        {reason_div}
       </td>
       <td>
         <div class="mece-tags">
           <span class="mece-tag {stage_class}">{stage_lbl}</span>
           <span class="mece-tag {ftype_class}">{ftype_lbl}</span>
         </div>
+      </td>
+      <td style="white-space:nowrap; font-size:.8rem;">
+        <div>{amount_str}</div>
+      </td>
+      <td>
+        <span class="kw-pill amr-pill">AMR {amr_pct}</span>
+        <span class="kw-pill ai-pill">AI {ai_pct}</span>
+        <span class="kw-pill drug-pill">Drug {drug_pct}</span>
       </td>
       <td>
         <div class="deadline-cell">{deadline_str}</div>
@@ -235,6 +269,75 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
       </td>
       <td>{elig_html}</td>
     </tr>"""
+
+
+def _build_calendar_html(grants: List[Grant], run_dt: datetime) -> str:
+    """Build a month-grid calendar for grants with deadlines in next 90 days."""
+    from calendar import monthcalendar, month_name
+    today = run_dt.date()
+    cutoff = today + timedelta(days=90)
+
+    # Group grants by deadline date
+    by_date: dict[date, list[str]] = {}
+    for g in grants:
+        if g.deadline and g.deadline >= today and g.deadline <= cutoff:
+            titles = by_date.setdefault(g.deadline, [])
+            titles.append(g.title or "")
+
+    if not by_date:
+        return ""
+
+    # Determine months to show
+    start_month = (today.year, today.month)
+    end_month = (cutoff.year, cutoff.month)
+
+    months_to_show = []
+    y, m = start_month
+    while (y, m) <= end_month:
+        months_to_show.append((y, m))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+
+    day_headers = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    header_html = "".join(f'<div>{d}</div>' for d in day_headers)
+
+    months_html_parts = []
+    for (y, m) in months_to_show:
+        title = f"{month_name[m]} {y}"
+        weeks = monthcalendar(y, m)
+        cells_html = []
+        for week in weeks:
+            for day_num in week:
+                if day_num == 0:
+                    cells_html.append('<div class="cal-cell empty"></div>')
+                else:
+                    d = date(y, m, day_num)
+                    extra_class = ""
+                    badge = ""
+                    tooltip = ""
+                    if d == today:
+                        extra_class = " today"
+                    if d in by_date:
+                        extra_class += " has-deadline"
+                        count = len(by_date[d])
+                        badge = f'<div class="cal-badge">{count}</div>'
+                        titles_escaped = html.escape("; ".join(by_date[d]))
+                        tooltip = f' title="{titles_escaped}"'
+                    cells_html.append(
+                        f'<div class="cal-cell{extra_class}"{tooltip}>{day_num}{badge}</div>'
+                    )
+        grid_html = "".join(cells_html)
+        months_html_parts.append(
+            f'<div class="cal-month">'
+            f'<div class="cal-month-title">{title}</div>'
+            f'<div class="cal-header">{header_html}</div>'
+            f'<div class="cal-grid">{grid_html}</div>'
+            f'</div>'
+        )
+
+    return f'<div class="cal-wrapper">{"".join(months_html_parts)}</div>'
 
 
 def _heat_class(n: int) -> str:
@@ -364,7 +467,7 @@ def _build_html(
         "unclassified": "미분류",
     }
     FTYPE_LABELS = {
-        "project_grant": "프로젝트<br>과제",
+        "project_grant": "프로젝트 과제",
         "fellowship": "펠로우십",
         "consortium": "컨소시엄",
         "challenge": "챌린지",
@@ -421,6 +524,53 @@ def _build_html(
     tier3_grants = _make_tier_rows("tier3")
     tier4_grants = _make_tier_rows("tier4")
 
+    # --- Timeline: monthly deadline distribution (next 18 months only) ---
+    from collections import Counter
+    today = run_dt.date()
+    cutoff_end = date(today.year + 2, today.month, 1)
+    month_counts: Counter = Counter()
+    for g in all_filtered:
+        if g.deadline and g.deadline >= today and g.deadline < cutoff_end:
+            month_counts[g.deadline.strftime("%Y-%m")] += 1
+    timeline_months = []
+    if month_counts:
+        for m in sorted(month_counts.keys()):
+            timeline_months.append({"label": m, "count": month_counts[m]})
+    timeline_max = max((m["count"] for m in timeline_months), default=1)
+
+    # --- Calendar view for 90-day upcoming deadlines ---
+    calendar_html = _build_calendar_html(all_filtered, run_dt)
+
+    # --- Grants for MD export ---
+    grants_for_export = []
+    for tier_key, tier_grants_list in [
+        ("tier1", tier1_grants), ("tier2", tier2_grants),
+        ("tier3", tier3_grants), ("tier4", tier4_grants),
+    ]:
+        for g in sorted(all_filtered, key=lambda x: (-x.relevance_score, x.deadline or date.max)):
+            fp = g.fingerprint()
+            clf = classifications.get(fp)
+            if clf and clf.tier == tier_key:
+                bd = scorer.score_breakdown(g)
+                reason_parts = []
+                if bd.get("amr", 0) >= 0.3:
+                    reason_parts.append("AMR 키워드 강함")
+                if bd.get("ai", 0) >= 0.3:
+                    reason_parts.append("AI 관련성 높음")
+                if bd.get("drug", 0) >= 0.3:
+                    reason_parts.append("Drug 연구 적합")
+                if bd.get("amount_bonus", 0) >= 0.1:
+                    reason_parts.append("지원금 규모 우수")
+                grants_for_export.append({
+                    "title": g.title or "",
+                    "agency": g.agency or "",
+                    "score": int(g.relevance_score * 100),
+                    "deadline": _fmt_deadline(g.deadline),
+                    "url": g.url or "#",
+                    "tier": tier_key,
+                    "reason": ", ".join(reason_parts),
+                })
+
     # --- Stats ---
     stat_items = []
     error_items = []
@@ -455,4 +605,8 @@ def _build_html(
         tier4_grants=tier4_grants,
         stat_items=stat_items,
         error_items=error_items,
+        timeline_months=timeline_months,
+        timeline_max=timeline_max,
+        calendar_html=calendar_html,
+        grants_for_export=grants_for_export,
     )

@@ -405,7 +405,7 @@ def main():
         grant_hunter.config.GRANT_HUNTER_PROFILE = args.profile
 
     result = run_pipeline()
-    sys.exit(0 if result["sources"] else 1)
+    sys.exit(0 if any(s.get("success") for s in result["sources"].values()) else 1)
 
 
 if __name__ == "__main__":

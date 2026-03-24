@@ -353,6 +353,61 @@ async def list_tools() -> list[types.Tool]:
                 },
             },
         ),
+        types.Tool(
+            name="grant_label",
+            description="Label a grant's relevance (0=irrelevant, 1=slightly relevant, 2=relevant, 3=highly relevant).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "grant_id": {"type": "string", "description": "Grant ID to label."},
+                    "relevance": {"type": "integer", "description": "Relevance score 0-3.", "minimum": 0, "maximum": 3},
+                    "note": {"type": "string", "description": "Optional annotation note."},
+                },
+                "required": ["grant_id", "relevance"],
+            },
+        ),
+        types.Tool(
+            name="grant_label_next",
+            description="Get the next unlabeled grant from the labeling queue with full details.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "skip": {"type": "integer", "description": "Number of unlabeled grants to skip (default 0).", "default": 0},
+                },
+            },
+        ),
+        types.Tool(
+            name="grant_label_status",
+            description="Show labeling progress: total queued, labeled, remaining, and distribution.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        types.Tool(
+            name="grant_keywords_reload",
+            description="Reload keywords.json without restarting the server. Returns before/after keyword counts.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        types.Tool(
+            name="grant_profile_create",
+            description="Create a custom researcher profile for personalized grant scoring.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Profile name (unique identifier)."},
+                    "amr": {"type": "number", "description": "Weight for AMR keywords (0-1)."},
+                    "ai": {"type": "number", "description": "Weight for AI keywords (0-1)."},
+                    "drug": {"type": "number", "description": "Weight for drug discovery keywords (0-1)."},
+                    "amount": {"type": "number", "description": "Weight for funding amount (0-1)."},
+                    "description": {"type": "string", "description": "Optional profile description."},
+                },
+                "required": ["name", "amr", "ai", "drug", "amount"],
+            },
+        ),
     ]
 
 
@@ -383,6 +438,16 @@ async def _dispatch(name: str, args: dict[str, Any]) -> Any:
         return _tool_grant_config_get(args)
     elif name == "grant_list_profiles":
         return _tool_grant_list_profiles(args)
+    elif name == "grant_label":
+        return _tool_grant_label(args)
+    elif name == "grant_label_next":
+        return _tool_grant_label_next(args)
+    elif name == "grant_label_status":
+        return _tool_grant_label_status(args)
+    elif name == "grant_keywords_reload":
+        return _tool_grant_keywords_reload(args)
+    elif name == "grant_profile_create":
+        return _tool_grant_profile_create(args)
     else:
         return {"error": f"Unknown tool: {name}"}
 
@@ -639,6 +704,125 @@ def _tool_grant_report(args: dict) -> dict:
         "size_kb": size_kb,
         "grant_count": len(grants),
     }
+
+
+LABELS_DIR = DATA_HOME / "labels"
+LABELS_FILE = LABELS_DIR / "relevance_labels.json"
+QUEUE_FILE = LABELS_DIR / "labeling_queue.json"
+
+
+def _load_labels() -> dict:
+    if LABELS_FILE.exists():
+        return json.loads(LABELS_FILE.read_text(encoding="utf-8"))
+    return {"schema_version": "1.0", "labels": {}, "total_queued": 0, "total_labeled": 0}
+
+
+def _save_labels(labels: dict) -> None:
+    LABELS_DIR.mkdir(parents=True, exist_ok=True)
+    labels["total_labeled"] = len(labels.get("labels", {}))
+    LABELS_FILE.write_text(json.dumps(labels, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _load_queue() -> list:
+    if QUEUE_FILE.exists():
+        return json.loads(QUEUE_FILE.read_text(encoding="utf-8"))
+    return []
+
+
+def _tool_grant_label(args: dict) -> dict:
+    grant_id = args.get("grant_id", "")
+    relevance = int(args.get("relevance", -1))
+    note = args.get("note", "")
+    if relevance < 0 or relevance > 3:
+        return {"error": "relevance must be 0-3"}
+    if not grant_id:
+        return {"error": "grant_id required"}
+    labels = _load_labels()
+    labels["labels"][grant_id] = {
+        "relevance": relevance,
+        "note": note,
+        "labeled_at": datetime.utcnow().isoformat(),
+    }
+    _save_labels(labels)
+    return {
+        "ok": True,
+        "grant_id": grant_id,
+        "relevance": relevance,
+        "total_labeled": labels["total_labeled"],
+        "total_queued": labels.get("total_queued", 0),
+    }
+
+
+def _tool_grant_label_next(args: dict) -> dict:
+    skip = int(args.get("skip", 0))
+    labels = _load_labels()
+    queue = _load_queue()
+    labeled_ids = set(labels.get("labels", {}).keys())
+    unlabeled = [g for g in queue if g["grant_id"] not in labeled_ids]
+    if not unlabeled:
+        return {"done": True, "message": "All grants labeled!", "total_labeled": len(labeled_ids)}
+    if skip >= len(unlabeled):
+        skip = 0
+    grant = unlabeled[skip]
+    return {
+        "remaining": len(unlabeled),
+        "position": skip + 1,
+        "grant": grant,
+        "label_scale": "0=irrelevant, 1=slightly relevant, 2=relevant, 3=highly relevant",
+    }
+
+
+def _tool_grant_label_status(args: dict) -> dict:
+    labels = _load_labels()
+    queue = _load_queue()
+    labeled = labels.get("labels", {})
+    distribution = {0: 0, 1: 0, 2: 0, 3: 0}
+    for entry in labeled.values():
+        r = entry.get("relevance", 0)
+        distribution[r] = distribution.get(r, 0) + 1
+    return {
+        "total_queued": len(queue),
+        "total_labeled": len(labeled),
+        "remaining": len(queue) - len(labeled),
+        "distribution": distribution,
+        "min_for_wave2": 100,
+        "ready_for_wave2": len(labeled) >= 100,
+    }
+
+
+def _tool_grant_keywords_reload(args: dict) -> dict:
+    from grant_hunter.scoring import keyword_counts, get_scorer
+    before = keyword_counts()
+    get_scorer(reload=True)
+    after = keyword_counts()
+    return {
+        "ok": True,
+        "before": before,
+        "after": after,
+        "changed": before != after,
+    }
+
+
+def _tool_grant_profile_create(args: dict) -> dict:
+    from grant_hunter.profiles import create_profile
+    name = args.get("name", "")
+    weights = {
+        "amr": float(args.get("amr", 0)),
+        "ai": float(args.get("ai", 0)),
+        "drug": float(args.get("drug", 0)),
+        "amount": float(args.get("amount", 0)),
+    }
+    description = args.get("description", "")
+    try:
+        profile = create_profile(name, weights, description)
+        return {
+            "ok": True,
+            "name": profile.name,
+            "description": profile.description,
+            "weights": dict(profile.weights),
+        }
+    except ValueError as e:
+        return {"error": str(e)}
 
 
 def _tool_grant_config_set(args: dict) -> dict:

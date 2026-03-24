@@ -54,15 +54,52 @@ PROFILES: Dict[str, ResearcherProfile] = {
     ),
 }
 
+# Runtime custom profiles (created via MCP tool, not persisted across restarts)
+_CUSTOM_PROFILES: Dict[str, ResearcherProfile] = {}
+
+
+def create_profile(name: str, weights: Dict[str, float], description: str = "") -> ResearcherProfile:
+    """Create and register a custom researcher profile at runtime.
+
+    Args:
+        name: Profile name (must not collide with preset names).
+        weights: Dict with keys amr, ai, drug, amount summing to 1.0.
+        description: Optional description.
+
+    Returns:
+        The created ResearcherProfile.
+
+    Raises:
+        ValueError: If name collides with preset or weights are invalid.
+    """
+    if name in PROFILES:
+        raise ValueError(f"Cannot override preset profile '{name}'")
+    profile = ResearcherProfile(
+        name=name,
+        description=description or f"Custom profile: {name}",
+        weights=weights,
+    )
+    _CUSTOM_PROFILES[name] = profile
+    return profile
+
+
+def get_default_profile() -> ResearcherProfile:
+    """Return the default profile."""
+    return PROFILES["default"]
+
 
 def get_profile(name: str) -> ResearcherProfile:
-    """Get a profile by name. Raises KeyError if not found."""
-    if name not in PROFILES:
-        available = ", ".join(PROFILES.keys())
-        raise KeyError(f"Unknown profile '{name}'. Available: {available}")
-    return PROFILES[name]
+    """Get a profile by name. Checks custom profiles first, then presets."""
+    if name in _CUSTOM_PROFILES:
+        return _CUSTOM_PROFILES[name]
+    if name in PROFILES:
+        return PROFILES[name]
+    available = ", ".join(list(PROFILES.keys()) + list(_CUSTOM_PROFILES.keys()))
+    raise KeyError(f"Unknown profile '{name}'. Available: {available}")
 
 
 def list_profiles() -> Dict[str, str]:
-    """Return dict of profile name -> description."""
-    return {name: p.description for name, p in PROFILES.items()}
+    """Return dict of profile name -> description (presets + custom)."""
+    result = {name: p.description for name, p in PROFILES.items()}
+    result.update({name: p.description for name, p in _CUSTOM_PROFILES.items()})
+    return result
