@@ -25,6 +25,8 @@ class Grant:
     raw_data: Dict[str, Any] = field(default_factory=dict)
     fetched_at: datetime = field(default_factory=datetime.utcnow)
     relevance_score: float = 0.0
+    llm_score: Optional[float] = None
+    llm_details: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -41,6 +43,7 @@ class Grant:
             d["deadline"] = date.fromisoformat(d["deadline"])
         if d.get("fetched_at"):
             d["fetched_at"] = datetime.fromisoformat(d["fetched_at"])
+        # llm_details may be a dict from JSON; pass through as-is
         return cls(**d)
 
     def fingerprint(self) -> str:
