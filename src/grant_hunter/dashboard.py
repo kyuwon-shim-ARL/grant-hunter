@@ -156,6 +156,8 @@ def _build_calendar(grants: List[Grant]) -> str:
 def _grant_to_json_row(g: Grant, eligibility: str, elig_reason: str, norm_score: float,
                        breakdown: dict | None = None) -> dict:
     amount = g.amount_max or g.amount_min
+    llm_score = getattr(g, 'llm_score', None)
+    llm_details = getattr(g, 'llm_details', None)
     return {
         "id": _esc(g.id),
         "title": _esc(g.title),
@@ -175,6 +177,8 @@ def _grant_to_json_row(g: Grant, eligibility: str, elig_reason: str, norm_score:
         "duration": g.duration_months,
         "keywords": [_esc(k) for k in (g.keywords or [])],
         "breakdown": breakdown or {},
+        "llm_score": round(llm_score * 100, 1) if llm_score is not None else None,
+        "llm_details": llm_details or {},
     }
 
 
@@ -218,6 +222,8 @@ def generate_dashboard(
         ))
 
     rows_json = json.dumps(rows, ensure_ascii=False)
+    has_llm_scores = any(getattr(g, 'llm_score', None) is not None for g in all_filtered)
+    llm_col_header = '<th data-col="llm_score">LLM Score</th>' if has_llm_scores else ""
 
     calendar_html = _build_calendar(all_filtered)
     run_str = run_dt.strftime("%Y-%m-%d %H:%M UTC")
@@ -522,6 +528,7 @@ a:hover .ext-icon {{ opacity: 1; }}
           <th data-col="deadline_sort">Deadline</th>
           <th data-col="amount">Amount</th>
           <th data-col="score">Score</th>
+          {llm_col_header}
           <th data-col="eligibility">Eligibility</th>
         </tr>
       </thead>
@@ -547,9 +554,12 @@ a:hover .ext-icon {{ opacity: 1; }}
   var sortCol = 'score';
   var sortDir = -1;
 
+  var HAS_LLM = DATA.some(function(r) {{ return r.llm_score !== null && r.llm_score !== undefined; }});
+
   function getVal(row, col) {{
     if (col === 'deadline_sort') return row.days_until === null ? 99999 : row.days_until;
     if (col === 'score') return row.score;
+    if (col === 'llm_score') return row.llm_score !== null && row.llm_score !== undefined ? row.llm_score : -1;
     if (col === 'amount') return row.amount;
     if (col === 'title') return row.title.toLowerCase();
     if (col === 'agency') return (row.agency + row.source).toLowerCase();
@@ -595,6 +605,26 @@ a:hover .ext-icon {{ opacity: 1; }}
     var w = Math.round(score) + 'px';
     var bar = '<span class="score-bar" style="width:' + w + 'px"></span>';
     return '<td class="td-score">' + score + bar + '</td>';
+  }}
+
+  function llmScoreCell(r) {{
+    if (r.llm_score === null || r.llm_score === undefined) {{
+      return '<td class="td-score" style="color:#ccc">—</td>';
+    }}
+    var d = r.llm_details || {{}};
+    var dims = [
+      {{key:'research_fit',   label:'연구정합', color:'#4A90D9'}},
+      {{key:'org_fit',        label:'기관적합', color:'#7B68EE'}},
+      {{key:'strategic_value',label:'전략가치', color:'#50C878'}},
+      {{key:'feasibility',    label:'실현가능', color:'#FF8C00'}}
+    ];
+    var tip = dims.map(function(dm) {{
+      var v = d[dm.key];
+      return v !== undefined && v !== null ? dm.label + ': ' + parseFloat(v).toFixed(1) : '';
+    }}).filter(function(s) {{ return s; }}).join(' | ');
+    var rationale = d.rationale || d.reasoning || '';
+    if (rationale) tip += (tip ? '\\n' : '') + rationale.substring(0, 120);
+    return '<td class="td-score" title="' + tip.replace(/"/g, '&quot;') + '" style="cursor:help">' + r.llm_score + '</td>';
   }}
 
   /* ── Score Breakdown ── */
@@ -644,7 +674,7 @@ a:hover .ext-icon {{ opacity: 1; }}
         + '<button class="cal-btn" onclick="window._gh.exportICSOne(\\'' + r.id.replace(/'/g, "\\\\'") + '\\')">Download .ics</button>'
         + '</div>';
     }}
-    return '<tr class="detail-row"><td></td><td colspan="6">'
+    return '<tr class="detail-row"><td></td><td colspan="' + (HAS_LLM ? '7' : '6') + '">'
       + '<div class="detail-content">'
       + '<div class="detail-main">'
         + '<div class="detail-desc">' + (r.desc_full || r.desc || 'No description available.') + '</div>'
@@ -731,6 +761,7 @@ a:hover .ext-icon {{ opacity: 1; }}
       html += deadlineCell(r);
       html += '<td class="td-amount">' + r.amount_label + '</td>';
       html += scoreCell(r.score);
+      if (HAS_LLM) html += llmScoreCell(r);
       html += '<td class="td-eligibility">' + eligBadge(r.eligibility, r.elig_reason) + '</td>';
       html += '</tr>';
       if (expandedId === r.id) html += detailRow(r);

@@ -221,6 +221,24 @@ def run_pipeline() -> dict:
         src_grants = [g for g in scored if g.source == src_name]
         stats[src_name]["filtered"] = len(src_grants)
 
+    # ── 3.5. LLM re-ranking (optional) ────────────────────────────────────
+    from grant_hunter.config import LLM_RERANK_ENABLED, LLM_RERANK_THRESHOLD
+    if LLM_RERANK_ENABLED:
+        from grant_hunter.reranker import LLMReranker
+        try:
+            reranker = LLMReranker()
+            threshold = LLM_RERANK_THRESHOLD
+            candidates = [g for g in scored if g.relevance_score >= threshold]
+            non_candidates = [g for g in scored if g.relevance_score < threshold]
+            logger.info("LLM reranking %d candidates (threshold=%.2f)", len(candidates), threshold)
+            reranked = reranker.rerank(candidates, profile=profile)
+            scored = reranked + non_candidates
+            # Re-sort by blended score (reranked grants have it), then by relevance_score
+            scored.sort(key=lambda g: getattr(g, "blended_score", g.relevance_score), reverse=True)
+            logger.info("LLM reranking complete")
+        except Exception as exc:
+            logger.warning("LLM reranking failed (non-fatal): %s", exc)
+
     # ── 4. Eligibility (scoring already done) ────────────────────────────────
     elig_engine = EligibilityEngine()
 

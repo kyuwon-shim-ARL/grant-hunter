@@ -194,7 +194,7 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
     chip_class, chip_label = _urgency_chip(days)
     deadline_str = _fmt_deadline(g.deadline)
     score_val = int(g.relevance_score * 100)
-    score_class = "score-high" if score_val >= 70 else ("score-mid" if score_val >= 50 else "score-low")
+    score_class = "score-high" if score_val >= 50 else ("score-mid" if score_val >= 30 else "score-low")
     title_escaped = html.escape(g.title or "")
     url_escaped = html.escape(g.url or "#")
     agency_escaped = html.escape(g.agency or "")
@@ -239,11 +239,57 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
     ai_pct = f"{breakdown.get('ai', 0):.2f}" if breakdown else "0.00"
     drug_pct = f"{breakdown.get('drug', 0):.2f}" if breakdown else "0.00"
 
+    # LLM score pills and rationale
+    llm_score = getattr(g, 'llm_score', None)
+    llm_details = getattr(g, 'llm_details', None)
+    llm_pills_html = ""
+    llm_rationale_html = ""
+    if llm_score is not None and llm_details is not None:
+        dim_cfg = [
+            ("research_alignment", "연구정합", "#4A90D9"),
+            ("institutional_fit",  "기관적합", "#7B68EE"),
+            ("strategic_value",    "전략가치", "#50C878"),
+            ("feasibility",        "실현가능", "#FF8C00"),
+        ]
+        pills = []
+        for key, label, color in dim_cfg:
+            val = getattr(llm_details, key, None) if not isinstance(llm_details, dict) else llm_details.get(key)
+            if val is not None:
+                try:
+                    pills.append(
+                        f'<span class="llm-pill" style="background:{color}">{label} {float(val):.1f}</span>'
+                    )
+                except (TypeError, ValueError):
+                    pass
+        if pills:
+            llm_pills_html = '<div class="llm-pills">' + "".join(pills) + '</div>'
+        rationale = (getattr(llm_details, "rationale", None) if not isinstance(llm_details, dict)
+                     else llm_details.get("rationale")) or ""
+        if rationale:
+            llm_rationale_html = (
+                f'<div class="llm-rationale" style="color:#555; font-size:.73rem; margin-top:3px; font-style:italic;">'
+                f'{html.escape(str(rationale)[:200])}</div>'
+            )
+
+    # Score display: blended (primary) vs keyword (secondary)
+    if llm_score is not None:
+        blended_val = int(llm_score * 100)
+        kw_score_val = int(g.relevance_score * 100)
+        score_class = "score-high" if blended_val >= 50 else ("score-mid" if blended_val >= 30 else "score-low")
+        score_cell_html = (
+            f'<span class="score-badge {score_class}" title="블렌딩 점수">{blended_val}</span>'
+            f'<div style="font-size:.7rem;color:#999;margin-top:2px">kw: {kw_score_val}</div>'
+        )
+    else:
+        score_class = "score-high" if score_val >= 50 else ("score-mid" if score_val >= 30 else "score-low")
+        score_cell_html = f'<span class="score-badge {score_class}">{score_val}</span>'
+
     return f"""<tr>
       <td>
         <div class="grant-name"><a href="{url_escaped}" target="_blank">{title_escaped}</a></div>
         <div class="grant-funder">{agency_escaped}</div>
         {reason_div}
+        {llm_rationale_html}
       </td>
       <td>
         <div class="mece-tags">
@@ -258,13 +304,14 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
         <span class="kw-pill amr-pill">AMR {amr_pct}</span>
         <span class="kw-pill ai-pill">AI {ai_pct}</span>
         <span class="kw-pill drug-pill">Drug {drug_pct}</span>
+        {llm_pills_html}
       </td>
       <td>
         <div class="deadline-cell">{deadline_str}</div>
         <div><span class="urg-chip {chip_class}">{chip_label}</span></div>
       </td>
       <td>
-        <span class="score-badge {score_class}">{score_val}</span>
+        {score_cell_html}
         {bd_html}
       </td>
       <td>{elig_html}</td>
@@ -505,7 +552,7 @@ def _build_html(
 
     def _make_tier_rows(tier_key: str) -> list:
         rows = []
-        for g in sorted(all_filtered, key=lambda x: (-x.relevance_score, x.deadline or date.max)):
+        for g in sorted(all_filtered, key=lambda x: (-getattr(x, 'blended_score', x.relevance_score), x.deadline or date.max)):
             fp = g.fingerprint()
             clf = classifications.get(fp)
             if clf and clf.tier == tier_key:

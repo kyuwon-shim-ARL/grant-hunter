@@ -408,6 +408,53 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["name", "amr", "ai", "drug", "amount"],
             },
         ),
+        types.Tool(
+            name="grant_keyword_audit",
+            description="Analyze keyword coverage, find zero-hit keywords, and identify potential gaps.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        types.Tool(
+            name="grant_keyword_suggest",
+            description="Suggest new keywords based on LLM analysis and term frequency.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "top_n": {
+                        "type": "integer",
+                        "description": "Maximum number of keyword suggestions to return (default: 20).",
+                        "default": 20,
+                    },
+                },
+            },
+        ),
+        types.Tool(
+            name="grant_score_with_subagent",
+            description=(
+                "Load subagent-based LLM scores for grants. "
+                "Returns the latest scored results with 4-dimension rubric "
+                "(research_alignment, institutional_fit, strategic_value, feasibility) "
+                "and MECE tier classification (A/B/C). "
+                "Scores are produced by Claude Code subagent sessions and saved to data/scores/."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tier": {
+                        "type": "string",
+                        "enum": ["A", "B", "C", "all"],
+                        "description": "Filter by tier: A (>=0.60), B (0.40-0.60), C (<0.40), or all (default: all).",
+                        "default": "all",
+                    },
+                    "top_n": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: all).",
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -448,6 +495,12 @@ async def _dispatch(name: str, args: dict[str, Any]) -> Any:
         return _tool_grant_keywords_reload(args)
     elif name == "grant_profile_create":
         return _tool_grant_profile_create(args)
+    elif name == "grant_keyword_audit":
+        return _tool_grant_keyword_audit(args)
+    elif name == "grant_keyword_suggest":
+        return _tool_grant_keyword_suggest(args)
+    elif name == "grant_score_with_subagent":
+        return _tool_grant_score_with_subagent(args)
     else:
         return {"error": f"Unknown tool: {name}"}
 
@@ -825,6 +878,40 @@ def _tool_grant_profile_create(args: dict) -> dict:
         return {"error": str(e)}
 
 
+def _tool_grant_keyword_audit(args: dict) -> dict:
+    from grant_hunter import keyword_audit
+    grants = _load_latest_snapshots()
+    coverage = keyword_audit.keyword_coverage(grants)
+    report = keyword_audit.generate_audit_report(grants)
+    return {
+        "coverage": {
+            cat: {
+                "total": coverage[cat]["total"],
+                "matched": coverage[cat]["matched"],
+                "match_rate": coverage[cat]["match_rate"],
+            }
+            for cat in ("amr", "ai", "drug_discovery")
+            if cat in coverage
+        },
+        "overall": coverage.get("overall", {}),
+        "zero_hit_keywords": coverage.get("zero_hit_keywords", []),
+        "top_keywords": coverage.get("top_keywords", []),
+        "summary": report.get("summary", {}),
+    }
+
+
+def _tool_grant_keyword_suggest(args: dict) -> dict:
+    from grant_hunter import keyword_audit
+    top_n = int(args.get("top_n", 20))
+    grants = _load_latest_snapshots()
+    suggestions = keyword_audit.suggest_keywords(grants, top_n=top_n)
+    return {
+        "suggestions": suggestions,
+        "count": len(suggestions),
+        "grant_count": len(grants),
+    }
+
+
 def _tool_grant_config_set(args: dict) -> dict:
     key = args.get("key", "")
     value = args.get("value", "")
@@ -843,6 +930,65 @@ def _tool_grant_config_get(args: dict) -> dict:
     if key:
         return {key: config.get(key)}
     return config
+
+
+def _tool_grant_score_with_subagent(args: dict) -> dict:
+    """Load and return subagent-based LLM scores."""
+    from grant_hunter.reranker import load_external_scores
+    scores = load_external_scores()
+    if not scores:
+        return {
+            "status": "no_scores",
+            "message": (
+                "No subagent scores found in data/scores/. "
+                "Run scoring via Claude Code session: "
+                "use Agent(subagent_type='oh-my-claudecode:scientist') to score grants."
+            ),
+        }
+
+    tier_filter = args.get("tier", "all")
+    top_n = args.get("top_n")
+
+    results = []
+    for gid, sr in scores.items():
+        # Normalise llm_score from [1,5] weighted sum to [0,1]
+        llm_norm = round((sr.llm_score - 1.0) / 4.0, 4)
+        if llm_norm >= 0.60:
+            tier = "A"
+        elif llm_norm >= 0.40:
+            tier = "B"
+        else:
+            tier = "C"
+
+        if tier_filter != "all" and tier != tier_filter:
+            continue
+
+        results.append({
+            "grant_id": gid,
+            "tier": tier,
+            "llm_score": llm_norm,
+            "research_alignment": sr.research_alignment,
+            "institutional_fit": sr.institutional_fit,
+            "strategic_value": sr.strategic_value,
+            "feasibility": sr.feasibility,
+            "rationale": sr.rationale,
+            "scored_at": sr.scored_at,
+        })
+
+    results.sort(key=lambda x: x["llm_score"], reverse=True)
+    if top_n:
+        results = results[:top_n]
+
+    tier_counts = {"A": 0, "B": 0, "C": 0}
+    for r in results:
+        tier_counts[r["tier"]] += 1
+
+    return {
+        "status": "ok",
+        "total": len(results),
+        "tier_distribution": tier_counts,
+        "grants": results,
+    }
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
