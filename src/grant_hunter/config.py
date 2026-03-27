@@ -48,5 +48,5 @@ NIH_COLLECTOR_TIMEOUT = int(os.environ.get("NIH_COLLECTOR_TIMEOUT", "1800"))
 GRANT_HUNTER_PROFILE = os.environ.get("GRANT_HUNTER_PROFILE", "default")
 
 # LLM reranking (optional; requires anthropic package + ANTHROPIC_API_KEY)
-LLM_RERANK_ENABLED = os.environ.get("GRANT_HUNTER_LLM_RERANK", "false").lower() in ("true", "1", "yes")  # Set GRANT_HUNTER_LLM_RERANK=true to enable
+LLM_RERANK_ENABLED = os.environ.get("GRANT_HUNTER_LLM_RERANK", "true").lower() in ("true", "1", "yes")  # Default: enabled. Estimated cost: $0.004/day max. Set GRANT_HUNTER_LLM_RERANK=false to disable
 LLM_RERANK_THRESHOLD = float(os.environ.get("GRANT_HUNTER_LLM_THRESHOLD", "0.15"))  # Minimum TF-IDF score for LLM evaluation (default 0.15)

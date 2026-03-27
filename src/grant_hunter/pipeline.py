@@ -357,6 +357,18 @@ def run_pipeline() -> dict:
         if anomaly_alerts:
             for alert in anomaly_alerts:
                 logger.warning("ANOMALY: %s", alert)
+            try:
+                from grant_hunter.monitoring import send_anomaly_alert
+                from grant_hunter.config import REPORT_EMAIL
+                report_email = REPORT_EMAIL
+                if report_email:
+                    send_anomaly_alert(anomaly_alerts, report_email)
+                else:
+                    logger.warning(
+                        "REPORT_EMAIL not set — anomaly alert skipped (no email sent)"
+                    )
+            except Exception as exc:
+                logger.warning("Anomaly alert send failed (non-fatal): %s", exc)
         summary["anomaly_alerts"] = anomaly_alerts
     except Exception as exc:
         logger.warning("Monitoring failed (non-fatal): %s", exc)

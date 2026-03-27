@@ -40,7 +40,7 @@ except ImportError:
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-LLM_RERANK_ENABLED: bool = os.environ.get("GRANT_HUNTER_LLM_RERANK", "false").lower() in (
+LLM_RERANK_ENABLED: bool = os.environ.get("GRANT_HUNTER_LLM_RERANK", "true").lower() in (
     "1",
     "true",
     "yes",

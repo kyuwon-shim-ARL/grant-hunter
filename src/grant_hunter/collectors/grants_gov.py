@@ -9,6 +9,7 @@ from typing import List, Optional
 
 import requests
 
+from grant_hunter.collectors.amr_filter import amr_ai_post_filter as _amr_ai_post_filter
 from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.config import GRANTS_GOV_API_URL, GRANTS_GOV_PAGE_SIZE, GRANTS_GOV_MAX_PAGES, REQUEST_TIMEOUT
 from grant_hunter.models import Grant
@@ -69,7 +70,9 @@ class GrantsGovCollector(BaseCollector):
                 logger.debug("[grants_gov] Detail enrich failed for %s: %s", grant.id, exc)
             time.sleep(0.3)
 
-        logger.info("[grants_gov] Total collected: %d unique grants", len(grants))
+        raw_count = len(grants)
+        grants = _amr_ai_post_filter(grants)
+        logger.info("[grants_gov] Total collected: %d unique grants (%d passed AMR+AI filter)", raw_count, len(grants))
         return grants
 
     def _fetch_detail(self, session: requests.Session, opp_id: str) -> Optional[dict]:

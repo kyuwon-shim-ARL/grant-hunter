@@ -12,6 +12,7 @@ from typing import List, Optional
 
 import requests
 
+from grant_hunter.collectors.amr_filter import amr_ai_post_filter as _amr_ai_post_filter
 from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.config import REQUEST_TIMEOUT
 from grant_hunter.models import Grant
@@ -69,7 +70,14 @@ class NIHCollector(BaseCollector):
             for future in as_completed(futures):
                 grants.extend(future.result())
 
-        logger.info("[nih] Total collected: %d unique opportunities", len(grants))
+        raw_count = len(grants)
+        grants = _amr_ai_post_filter(grants)
+        logger.info(
+            "[nih] Total collected: %d unique opportunities (%d passed AMR+AI filter, %.1f%%)",
+            raw_count,
+            len(grants),
+            100.0 * len(grants) / raw_count if raw_count else 0.0,
+        )
         return grants
 
     def _search_term_safe(self, term: str, seen_ids: set, seen_lock: threading.Lock) -> List[Grant]:
