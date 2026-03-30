@@ -7,7 +7,7 @@
     {
       "name": "grant-hunter",
       "description": "Automated grant discovery from NIH, EU Portal, and Grants.gov with keyword filtering, eligibility scoring, and interactive HTML dashboards",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": { "name": "Kyuwon Shim", "email": "kyuwon.shim@ip-korea.org" },
       "source": "./",
       "category": "research",
@@ -15,5 +15,5 @@
       "tags": ["grant", "amr", "antimicrobial-resistance", "ai", "research-funding", "nih", "eu-portal"]
     }
   ],
-  "version": "1.1.0"
+  "version": "1.2.0"
 }
