@@ -201,6 +201,31 @@
       "전이학습"
     ]
   },
+  "amr_precision_filter": {
+    "en": [
+      "antimicrobial resistance",
+      "antibiotic resistance",
+      "antimicrobial resistant",
+      "drug-resistant",
+      "\\bAMR\\b",
+      "ESKAPE",
+      "carbapenem",
+      "\\bMRSA\\b",
+      "multidrug resistant",
+      "antibacterial"
+    ]
+  },
+  "ai_precision_filter": {
+    "en": [
+      "artificial intelligence",
+      "machine learning",
+      "deep learning",
+      "neural network",
+      "natural language processing",
+      "large language model",
+      "computational biology"
+    ]
+  },
   "drug_discovery": {
     "en": [
       "drug discovery",

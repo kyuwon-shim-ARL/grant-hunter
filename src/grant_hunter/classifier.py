@@ -102,6 +102,12 @@ class GrantClassifier:
         # --- Priority Tier ---
         # Calibrated to real score distribution (max ~0.60, std ~0.09)
         # Target: T1 < T2 < T3 < T4 (ascending count)
+        # T4 investigation (2026-03-30): No eligibility integration bug found at this location.
+        # Investigated: Grant model (no eligibility_status field), EligibilityEngine.check() return values,
+        # pipeline.py eligibility flow, and all 45 classifier/eligibility tests.
+        # Design: callers attach eligibility_status as a dynamic attribute before classify(); pipeline
+        # stores results in eligibility_map separately and does not write back onto Grant objects.
+        # The getattr default of "uncertain" is correct fallback behaviour when no status is attached.
         eligibility = getattr(grant, "eligibility_status", "uncertain")
         score = grant.relevance_score
 

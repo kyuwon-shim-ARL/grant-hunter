@@ -781,6 +781,61 @@ svg text { font-family: var(--font-ui); }
 .llm-pill { display:inline-block; font-size:.63rem; padding:1px 6px; border-radius:8px; margin:1px 1px 0; font-weight:600; color:#fff; }
 .llm-rationale { color:#555; font-size:.73rem; margin-top:3px; font-style:italic; }
 
+/* ─────────────────────────────────────────
+   FEEDBACK BUTTONS
+───────────────────────────────────────── */
+.feedback-cell {
+  text-align: center;
+  white-space: nowrap;
+}
+.fb-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: .95rem;
+  padding: .15rem .35rem;
+  line-height: 1;
+  transition: border-color var(--trans), background var(--trans), transform var(--trans);
+  opacity: .6;
+}
+.fb-btn:hover { opacity: 1; transform: scale(1.15); }
+.fb-btn.selected-up   { border-color: var(--safe);   background: var(--safe-bg);   opacity: 1; }
+.fb-btn.selected-down { border-color: var(--urgent); background: var(--urgent-bg); opacity: 1; }
+
+/* Floating download button */
+#feedback-fab {
+  display: none;
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  padding: .6rem 1.1rem;
+  font-size: .82rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0,137,123,.4);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  transition: background var(--trans), transform var(--trans);
+}
+#feedback-fab:hover { background: var(--teal-dark); transform: scale(1.04); }
+#feedback-fab .fab-badge {
+  background: #fff;
+  color: var(--teal-dark);
+  border-radius: 100px;
+  font-size: .7rem;
+  font-weight: 700;
+  padding: .1rem .4rem;
+  min-width: 20px;
+  text-align: center;
+}
+
 /* Calendar view */
 .cal-wrapper { display:flex; gap:20px; flex-wrap:wrap; }
 .cal-month { min-width:220px; }
@@ -1066,6 +1121,7 @@ svg text { font-family: var(--font-ui); }
               <th>마감</th>
               <th>점수</th>
               <th>적격성</th>
+              <th>피드백</th>
             </tr>
           </thead>
           <tbody>
@@ -1102,6 +1158,7 @@ svg text { font-family: var(--font-ui); }
               <th>마감</th>
               <th>점수</th>
               <th>적격성</th>
+              <th>피드백</th>
             </tr>
           </thead>
           <tbody>
@@ -1151,6 +1208,7 @@ svg text { font-family: var(--font-ui); }
                 <th>마감</th>
                 <th>점수</th>
                 <th>적격성</th>
+                <th>피드백</th>
               </tr>
             </thead>
             <tbody>
@@ -1184,6 +1242,7 @@ svg text { font-family: var(--font-ui); }
                 <th>마감</th>
                 <th>점수</th>
                 <th>적격성</th>
+                <th>피드백</th>
               </tr>
             </thead>
             <tbody>
@@ -1234,8 +1293,137 @@ svg text { font-family: var(--font-ui); }
 
 </main>
 
+<!-- Floating Feedback Download Button -->
+<button id="feedback-fab" onclick="downloadFeedback()" style="display:none;">
+  ⬇ 피드백 다운로드 <span class="fab-badge" id="fab-count">0</span>
+</button>
+
 <script>
-// Animate KPI bars on load
+// ─── Feedback localStorage logic ───────────────────────────────────────────
+(function() {
+  var STORAGE_KEY = 'grant_hunter_feedback';
+  var MAX_ENTRIES = 100;
+  var MAX_AGE_DAYS = 30;
+
+  function loadFeedback() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch(e) { return []; }
+  }
+
+  function saveFeedback(entries) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch(e) {}
+  }
+
+  function pruneOld(entries) {
+    var cutoff = Date.now() - MAX_AGE_DAYS * 86400 * 1000;
+    return entries.filter(function(e) { return e.timestamp > cutoff; });
+  }
+
+  function updateFab(entries) {
+    var fab = document.getElementById('feedback-fab');
+    var badge = document.getElementById('fab-count');
+    if (!fab) return;
+    if (entries.length > 0) {
+      fab.style.display = 'flex';
+      if (badge) badge.textContent = entries.length;
+    } else {
+      fab.style.display = 'none';
+    }
+  }
+
+  // Prune on load and restore button states
+  document.addEventListener('DOMContentLoaded', function() {
+    var entries = pruneOld(loadFeedback());
+    saveFeedback(entries);
+    updateFab(entries);
+
+    // Restore button highlight states
+    entries.forEach(function(entry) {
+      var rows = document.querySelectorAll('tr[data-grant-id="' + CSS.escape(entry.grant_id) + '"]');
+      rows.forEach(function(row) {
+        var upBtn   = row.querySelector('.fb-up');
+        var downBtn = row.querySelector('.fb-down');
+        if (!upBtn || !downBtn) return;
+        if (entry.label === 'relevant') {
+          upBtn.classList.add('selected-up');
+          downBtn.classList.remove('selected-down');
+        } else {
+          downBtn.classList.add('selected-down');
+          upBtn.classList.remove('selected-up');
+        }
+      });
+    });
+  });
+
+  window.recordFeedback = function(btn) {
+    var grantId = btn.getAttribute('data-grant-id');
+    var label   = btn.getAttribute('data-label');
+    if (!grantId) return;
+
+    var relevance = (label === 'relevant') ? 2 : 0;
+    var now = Date.now();
+    var reportDate = document.querySelector('.header-date')
+      ? document.querySelector('.header-date').textContent.replace('생성일 ', '').trim()
+      : '';
+
+    var entries = pruneOld(loadFeedback());
+
+    // Remove existing entry for same grant_id
+    entries = entries.filter(function(e) { return e.grant_id !== grantId; });
+
+    // Add new entry
+    entries.push({
+      grant_id:    grantId,
+      label:       label,
+      relevance:   relevance,
+      timestamp:   now,
+      report_date: reportDate
+    });
+
+    // Cap at MAX_ENTRIES (drop oldest)
+    if (entries.length > MAX_ENTRIES) {
+      entries.sort(function(a, b) { return a.timestamp - b.timestamp; });
+      entries = entries.slice(entries.length - MAX_ENTRIES);
+    }
+
+    saveFeedback(entries);
+    updateFab(entries);
+
+    // Update button styles for all matching rows (grant may appear in only one tier)
+    var rows = document.querySelectorAll('tr[data-grant-id="' + CSS.escape(grantId) + '"]');
+    rows.forEach(function(row) {
+      var upBtn   = row.querySelector('.fb-up');
+      var downBtn = row.querySelector('.fb-down');
+      if (!upBtn || !downBtn) return;
+      if (label === 'relevant') {
+        upBtn.classList.add('selected-up');
+        downBtn.classList.remove('selected-down');
+      } else {
+        downBtn.classList.add('selected-down');
+        upBtn.classList.remove('selected-up');
+      }
+    });
+  };
+
+  window.downloadFeedback = function() {
+    var entries = loadFeedback();
+    if (!entries.length) return;
+    var today = new Date();
+    var ymd = today.getFullYear().toString()
+      + String(today.getMonth() + 1).padStart(2, '0')
+      + String(today.getDate()).padStart(2, '0');
+    var blob = new Blob([JSON.stringify(entries, null, 2)], {type: 'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'grant_feedback_' + ymd + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+})();
+
+// ─── Animate KPI bars on load
 document.addEventListener('DOMContentLoaded', function() {
   requestAnimationFrame(function() {
     document.querySelectorAll('.kpi-bar-fill, .urgency-fill').forEach(function(el) {

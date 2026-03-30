@@ -1,13 +1,17 @@
 """AMR+AI dual keyword post-filter for grant collectors."""
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import List
 
 from grant_hunter.models import Grant
 
-# AMR keywords — at least one must match (case-insensitive, whole-word for abbreviations)
-AMR_KEYWORDS = [
+_KEYWORDS_FILE = Path(__file__).parent.parent / "data" / "keywords.json"
+
+# Fallback hardcoded defaults (used if keywords.json is missing or malformed)
+_DEFAULT_AMR_KEYWORDS = [
     "antimicrobial resistance",
     "antibiotic resistance",
     "antimicrobial resistant",
@@ -20,9 +24,8 @@ AMR_KEYWORDS = [
     "antibacterial",
 ]
 
-# AI keywords — at least one must match (case-insensitive)
 # NOTE: bare "AI" excluded to prevent false positives (NIAID, CHAI, etc.)
-AI_KEYWORDS = [
+_DEFAULT_AI_KEYWORDS = [
     "artificial intelligence",
     "machine learning",
     "deep learning",
@@ -31,6 +34,24 @@ AI_KEYWORDS = [
     "large language model",
     "computational biology",
 ]
+
+
+def _load_filter_keywords() -> tuple[List[str], List[str]]:
+    """Load precision filter keywords from keywords.json."""
+    try:
+        with open(_KEYWORDS_FILE, encoding="utf-8") as f:
+            kw = json.load(f)
+        amr = kw.get("amr_precision_filter", {}).get("en", [])
+        ai = kw.get("ai_precision_filter", {}).get("en", [])
+        if amr and ai:
+            return amr, ai
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    # Fallback to hardcoded defaults
+    return _DEFAULT_AMR_KEYWORDS, _DEFAULT_AI_KEYWORDS
+
+
+AMR_KEYWORDS, AI_KEYWORDS = _load_filter_keywords()
 
 
 def _matches_any(text: str, patterns: List[str]) -> bool:

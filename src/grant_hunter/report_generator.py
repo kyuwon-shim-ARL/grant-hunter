@@ -284,7 +284,8 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
         score_class = "score-high" if score_val >= 50 else ("score-mid" if score_val >= 30 else "score-low")
         score_cell_html = f'<span class="score-badge {score_class}">{score_val}</span>'
 
-    return f"""<tr>
+    grant_id_escaped = html.escape(g.id or "")
+    return f"""<tr data-grant-id="{grant_id_escaped}">
       <td>
         <div class="grant-name"><a href="{url_escaped}" target="_blank">{title_escaped}</a></div>
         <div class="grant-funder">{agency_escaped}</div>
@@ -315,6 +316,10 @@ def _build_tier_row_html(g: Grant, clf, eligibility: str = "", reason: str = "",
         {bd_html}
       </td>
       <td>{elig_html}</td>
+      <td class="feedback-cell">
+        <button class="fb-btn fb-up" onclick="recordFeedback(this)" data-grant-id="{grant_id_escaped}" data-label="relevant" title="관련 있음">👍</button>
+        <button class="fb-btn fb-down" onclick="recordFeedback(this)" data-grant-id="{grant_id_escaped}" data-label="irrelevant" title="관련 없음">👎</button>
+      </td>
     </tr>"""
 
 

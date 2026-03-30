@@ -85,8 +85,11 @@ def check_volume_anomaly(summary: dict, history_file: Path) -> list[str]:
     return alerts
 
 
-def send_anomaly_alert(alerts: list[str], email: str) -> bool:
-    """Send anomaly alert email. Returns True if email was sent successfully."""
+def send_anomaly_alert(alerts: list[str], email: str, history_file: Path = None) -> bool:
+    """Send anomaly alert email. Returns True if email was sent successfully.
+
+    If history_file is provided, records alert_sent_at in the latest run entry.
+    """
     if not alerts:
         return False
     subject = f"[Grant Hunter ALERT] {len(alerts)} anomalies detected"
@@ -98,7 +101,31 @@ def send_anomaly_alert(alerts: list[str], email: str) -> bool:
             text=True,
             timeout=30,
         )
-        return result.returncode == 0
+        sent = result.returncode == 0
+        if sent and history_file is not None:
+            _record_alert_timestamp(history_file)
+        return sent
     except (FileNotFoundError, Exception) as e:
         logger.warning("Could not send alert email: %s", e)
         return False
+
+
+def _record_alert_timestamp(history_file: Path) -> None:
+    """Add alert_sent_at to the latest entry in run_history."""
+    history = load_run_history(history_file)
+    if not history:
+        return
+    history[-1]["alert_sent_at"] = datetime.utcnow().isoformat()
+    # Atomic write (same pattern as save_run_history)
+    history_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=history_file.parent, suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2, default=str)
+        os.replace(tmp_path, str(history_file))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise

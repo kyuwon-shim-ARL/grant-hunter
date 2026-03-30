@@ -110,24 +110,20 @@ def _run_collector(collector: BaseCollector) -> Tuple[List[Grant], dict]:
 
 
 def _send_email_report(subject: str, body: str, html_path: Path) -> bool:
-    """Send report via ~/bin/send-email utility."""
+    """Send report via ~/bin/send-email utility.
+
+    Sends a plain-text summary with the full HTML report as attachment.
+    """
     try:
+        cmd = ["send-email", REPORT_EMAIL, subject, body]
         if html_path.exists():
-            # Pass file path instead of HTML content to avoid ARG_MAX limit
-            result = subprocess.run(
-                ["send-email", REPORT_EMAIL, subject, body,
-                 "--html", "--file", str(html_path)],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-        else:
-            result = subprocess.run(
-                ["send-email", REPORT_EMAIL, subject, body, "--html"],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
+            cmd += ["--attach", str(html_path)]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
 
         if result.returncode == 0:
             logger.info("Email sent to %s", REPORT_EMAIL)
@@ -306,7 +302,7 @@ def run_pipeline() -> dict:
         body_text = (
             f"Grant Hunter found {n_new} new and {n_changed} changed grants matching AMR+AI criteria.\n"
             f"Total relevant: {len(scored)} | Eligible (IPK): {eligible_count} | Uncertain: {uncertain_count}\n\n"
-            f"See attached HTML report for details.\nDashboard: {dashboard_path}"
+            f"Full HTML report: {report_path}\nDashboard: {dashboard_path}"
         )
         email_sent = _send_email_report(subject, body_text, report_path)
 
@@ -357,18 +353,7 @@ def run_pipeline() -> dict:
         if anomaly_alerts:
             for alert in anomaly_alerts:
                 logger.warning("ANOMALY: %s", alert)
-            try:
-                from grant_hunter.monitoring import send_anomaly_alert
-                from grant_hunter.config import REPORT_EMAIL
-                report_email = REPORT_EMAIL
-                if report_email:
-                    send_anomaly_alert(anomaly_alerts, report_email)
-                else:
-                    logger.warning(
-                        "REPORT_EMAIL not set — anomaly alert skipped (no email sent)"
-                    )
-            except Exception as exc:
-                logger.warning("Anomaly alert send failed (non-fatal): %s", exc)
+            # NOTE: anomaly alert emails disabled per user request
         summary["anomaly_alerts"] = anomaly_alerts
     except Exception as exc:
         logger.warning("Monitoring failed (non-fatal): %s", exc)

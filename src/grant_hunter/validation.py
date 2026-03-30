@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Dict, List
 
@@ -113,3 +114,59 @@ def evaluate_scoring(scorer: RelevanceScorer = None) -> Dict:
         "total_grants": len(scored),
         "scored_grants": scored,
     }
+
+
+def ndcg_at_k(scored_items: List[dict], k: int = 10) -> float:
+    """Compute NDCG@K. Items need 'score' and 'label' (int 0-3) fields."""
+    items = sorted(scored_items, key=lambda x: x["score"], reverse=True)[:k]
+    ideal = sorted(scored_items, key=lambda x: x.get("label", 0) or 0, reverse=True)[:k]
+
+    def dcg(lst: List[dict]) -> float:
+        total = 0.0
+        for i, item in enumerate(lst):
+            rel = item.get("label", 0) or 0
+            total += (2 ** rel - 1) / math.log2(i + 2)
+        return total
+
+    idcg = dcg(ideal)
+    if idcg == 0.0:
+        return 0.0
+    return round(dcg(items) / idcg, 4)
+
+
+def mrr(scored_items: List[dict], relevant_threshold: int = 2) -> float:
+    """Mean Reciprocal Rank. First relevant item (label >= threshold) in ranked list."""
+    items = sorted(scored_items, key=lambda x: x["score"], reverse=True)
+    for i, item in enumerate(items):
+        label = item.get("label", 0) or 0
+        if label >= relevant_threshold:
+            return round(1.0 / (i + 1), 4)
+    return 0.0
+
+
+def compute_inter_rater_kappa(labels_a: List[int], labels_b: List[int]) -> float:
+    """Cohen's kappa between two label sets."""
+    if len(labels_a) != len(labels_b) or len(labels_a) == 0:
+        raise ValueError("label lists must be non-empty and equal length")
+
+    n = len(labels_a)
+    categories = sorted(set(labels_a) | set(labels_b))
+    k = len(categories)
+    cat_index = {c: i for i, c in enumerate(categories)}
+
+    # Build confusion matrix
+    matrix = [[0] * k for _ in range(k)]
+    for a, b in zip(labels_a, labels_b):
+        matrix[cat_index[a]][cat_index[b]] += 1
+
+    # Observed agreement
+    p_o = sum(matrix[i][i] for i in range(k)) / n
+
+    # Expected agreement
+    row_sums = [sum(matrix[i]) for i in range(k)]
+    col_sums = [sum(matrix[i][j] for i in range(k)) for j in range(k)]
+    p_e = sum(row_sums[i] * col_sums[i] for i in range(k)) / (n * n)
+
+    if p_e == 1.0:
+        return 1.0
+    return round((p_o - p_e) / (1.0 - p_e), 4)

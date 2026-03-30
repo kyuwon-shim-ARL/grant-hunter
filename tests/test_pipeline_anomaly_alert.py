@@ -57,12 +57,12 @@ class TestAnomalyAlertConnection:
         call_log, _ = self._run_monitoring_block([], "user@example.com")
         assert len(call_log) == 0
 
-    def test_pipeline_uses_send_anomaly_alert(self):
-        """Integration: verify pipeline.py actually imports and calls send_anomaly_alert on anomaly."""
+    def test_pipeline_anomaly_email_disabled(self):
+        """Integration: verify anomaly alert emails are intentionally disabled in pipeline.py."""
         from pathlib import Path
         src = Path("src/grant_hunter/pipeline.py").read_text()
-        assert "send_anomaly_alert" in src, "send_anomaly_alert must be referenced in pipeline.py"
-        assert "REPORT_EMAIL" in src, "REPORT_EMAIL must be used in pipeline.py anomaly block"
+        assert "anomaly alert emails disabled" in src, "anomaly alert email disable comment must be in pipeline.py"
+        assert "check_volume_anomaly" in src, "anomaly detection logic must still run (just no email)"
 
 
 class TestAnomalyAlertExceptionHandling:
