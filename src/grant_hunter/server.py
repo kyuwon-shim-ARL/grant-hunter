@@ -508,7 +508,11 @@ async def _dispatch(name: str, args: dict[str, Any]) -> Any:
 # ── Tool implementations ───────────────────────────────────────────────────────
 
 def _tool_grant_collect(args: dict) -> dict:
-    sources = args.get("sources") or None
+    raw_sources = args.get("sources") or None
+    # Normalize: if LLM passes ["all"] or "all", treat as None (collect all)
+    if raw_sources and (raw_sources == ["all"] or raw_sources == "all"):
+        raw_sources = None
+    sources = raw_sources
     test = bool(args.get("test", False))
     profile_name = args.get("profile", "default")
     job_id = str(uuid.uuid4())[:8]
