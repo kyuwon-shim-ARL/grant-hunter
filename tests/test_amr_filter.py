@@ -91,3 +91,36 @@ class TestAmrAiPostFilter:
         filtered = amr_ai_post_filter(all_grants)
         ratio = len(filtered) / len(all_grants)
         assert ratio >= 0.10, f"AMR+AI ratio {ratio:.1%} < 10%"
+
+
+class TestIsAmrAiRelevantEdgeCases:
+    def test_empty_title_and_description(self):
+        # Both fields empty → no keywords match → False
+        g = _g(title="", description="")
+        assert is_amr_ai_relevant(g) is False
+
+    def test_match_in_description_only(self):
+        # Title is generic but description has AMR+AI keywords
+        g = _g(title="Research Funding Opportunity",
+               description="neural network model for carbapenem-resistant pathogen surveillance")
+        assert is_amr_ai_relevant(g) is True
+
+    def test_case_insensitive_amr(self):
+        # Keywords should match regardless of case
+        g = _g(title="ANTIMICROBIAL RESISTANCE prediction with DEEP LEARNING")
+        assert is_amr_ai_relevant(g) is True
+
+    def test_amr_partial_word_not_matched(self):
+        # "bioAMRresearch" should NOT match \bAMR\b (word boundary)
+        g = _g(title="bioAMRresearch deep learning study")
+        # \bAMR\b won't match inside bioAMRresearch
+        assert is_amr_ai_relevant(g) is False
+
+    def test_multidrug_resistant_hyphenated(self):
+        # "drug-resistant" uses hyphen form
+        g = _g(title="drug-resistant bacteria classification using machine learning")
+        assert is_amr_ai_relevant(g) is True
+
+    def test_computational_biology_counts_as_ai(self):
+        g = _g(title="computational biology approach to antibiotic resistance mechanisms")
+        assert is_amr_ai_relevant(g) is True

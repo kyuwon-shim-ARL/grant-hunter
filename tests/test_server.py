@@ -121,6 +121,57 @@ def test_tool_grant_collect_defaults_all_sources():
     srv._jobs.clear()
 
 
+def test_tool_grant_collect_sources_list_all_normalizes():
+    # Regression: ISSUE — sources=["all"] caused KeyError in _get_collector
+    # Found by /qa on 2026-04-09
+    # Root cause: Claude Haiku interpreted "collect all" prompt as sources=["all"]
+    # which is not a valid source name. Must be treated as None (collect all sources).
+    srv._jobs.clear()
+    with patch("threading.Thread") as mock_thread_cls:
+        mock_thread = MagicMock()
+        mock_thread_cls.return_value = mock_thread
+        result = _tool_grant_collect({"sources": ["all"]})
+
+    assert set(result["sources"]) == set(srv.ALL_SOURCES)
+    srv._jobs.clear()
+
+
+def test_tool_grant_collect_sources_string_all_normalizes():
+    # Regression: sources="all" (string, not list) also treated as collect-all
+    srv._jobs.clear()
+    with patch("threading.Thread") as mock_thread_cls:
+        mock_thread = MagicMock()
+        mock_thread_cls.return_value = mock_thread
+        result = _tool_grant_collect({"sources": "all"})
+
+    assert set(result["sources"]) == set(srv.ALL_SOURCES)
+    srv._jobs.clear()
+
+
+def test_tool_grant_collect_sources_empty_list_normalizes():
+    # Empty list is falsy → should also default to all sources
+    srv._jobs.clear()
+    with patch("threading.Thread") as mock_thread_cls:
+        mock_thread = MagicMock()
+        mock_thread_cls.return_value = mock_thread
+        result = _tool_grant_collect({"sources": []})
+
+    assert set(result["sources"]) == set(srv.ALL_SOURCES)
+    srv._jobs.clear()
+
+
+def test_tool_grant_collect_sources_specific_unchanged():
+    # Passing a valid subset must NOT be normalized away
+    srv._jobs.clear()
+    with patch("threading.Thread") as mock_thread_cls:
+        mock_thread = MagicMock()
+        mock_thread_cls.return_value = mock_thread
+        result = _tool_grant_collect({"sources": ["nih", "eu"]})
+
+    assert set(result["sources"]) == {"nih", "eu"}
+    srv._jobs.clear()
+
+
 # ── _tool_grant_collect_status ────────────────────────────────────────────────
 
 def test_tool_grant_collect_status_found():
