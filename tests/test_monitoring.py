@@ -181,6 +181,22 @@ def test_check_volume_anomaly_volume_drop_needs_3_history(tmp_path):
     assert not any("VOLUME_DROP" in a for a in alerts)
 
 
+def test_check_volume_anomaly_llm_coverage_low(tmp_path):
+    history_file = tmp_path / "run_history.json"
+    summary = _make_summary()
+    summary["llm_coverage"] = {"covered": 0, "total": 103}
+    alerts = check_volume_anomaly(summary, history_file)
+    assert any("LLM_COVERAGE" in a and "0/103" in a for a in alerts)
+
+
+def test_check_volume_anomaly_llm_coverage_full_no_alert(tmp_path):
+    history_file = tmp_path / "run_history.json"
+    summary = _make_summary()
+    summary["llm_coverage"] = {"covered": 103, "total": 103}
+    alerts = check_volume_anomaly(summary, history_file)
+    assert not any("LLM_COVERAGE" in a for a in alerts)
+
+
 # ── send_anomaly_alert ─────────────────────────────────────────────────────────
 
 def test_send_anomaly_alert_empty_returns_false():

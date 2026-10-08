@@ -319,3 +319,30 @@ def test_eu_source_with_horizon(engine):
     assert result.status == "eligible"
     assert "EU_HORIZON_ASSOCIATE" in result.rules_matched
     assert "EU_SOURCE_LIKELY_ELIGIBLE" not in result.rules_matched
+
+
+# ── Korean domestic source ────────────────────────────────────────────────
+
+def test_korea_source_not_excluded_as_ineligible(engine):
+    """A Korean national R&D announcement must not be marked ineligible by the
+    US/HIC-oriented rules (IPK is a domestic Korean non-profit institute)."""
+    grant = make_grant(
+        id="KR-001",
+        title="2026년도 감염병 치료제 신약개발 지원사업 신규과제 공고",
+        source="korea",
+        description="항생제 내성균 대응을 위한 신약 발굴 연구개발과제 공고입니다.",
+    )
+    result = engine.check(grant)
+    assert result.status != "ineligible"
+
+
+def test_korea_source_marked_eligible_domestic(engine):
+    grant = make_grant(
+        id="KR-002",
+        title="2026년도 개인기초연구사업 신규과제 공고",
+        source="korea",
+        description="연구자 자유 공모형 기초연구 지원사업입니다.",
+    )
+    result = engine.check(grant)
+    assert result.status == "eligible"
+    assert "KR_DOMESTIC_SOURCE" in result.rules_matched

@@ -425,6 +425,137 @@ def test_external_scores_priority_in_rerank():
         assert g.llm_score is not None
 
 
+def test_load_external_scores_stale_file_ignored(caplog):
+    """A file older than max_age_days is ignored (treated as not present)."""
+    from grant_hunter.reranker import load_external_scores
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scores_dir = Path(tmpdir) / "scores"
+        old_date = (datetime.now(timezone.utc) - timedelta(days=20)).strftime("%Y-%m-%d")
+        _write_scores_json(scores_dir, [
+            {"grant_id": "STALE-001", "research_alignment": 5, "institutional_fit": 5,
+             "strategic_value": 5, "feasibility": 5, "rationale": "stale"},
+        ], date_str=old_date)
+
+        import logging
+        with caplog.at_level(logging.WARNING):
+            result = load_external_scores(scores_dir, max_age_days=14)
+
+    assert result == {}
+    assert any("stale" in r.message.lower() for r in caplog.records)
+
+
+def test_load_external_scores_fresh_file_used_with_max_age():
+    """A file within max_age_days is used normally."""
+    from grant_hunter.reranker import load_external_scores
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scores_dir = Path(tmpdir) / "scores"
+        recent_date = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+        _write_scores_json(scores_dir, [
+            {"grant_id": "FRESH-001", "research_alignment": 3, "institutional_fit": 3,
+             "strategic_value": 3, "feasibility": 3, "rationale": "fresh"},
+        ], date_str=recent_date)
+
+        result = load_external_scores(scores_dir, max_age_days=14)
+
+    assert "FRESH-001" in result
+
+
+def test_load_external_scores_no_staleness_check_without_max_age():
+    """Without max_age_days, staleness is not enforced (backward compatible)."""
+    from grant_hunter.reranker import load_external_scores
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        scores_dir = Path(tmpdir) / "scores"
+        old_date = (datetime.now(timezone.utc) - timedelta(days=200)).strftime("%Y-%m-%d")
+        _write_scores_json(scores_dir, [
+            {"grant_id": "OLD-BUT-FINE", "research_alignment": 3, "institutional_fit": 3,
+             "strategic_value": 3, "feasibility": 3, "rationale": "old"},
+        ], date_str=old_date)
+
+        result = load_external_scores(scores_dir)
+
+    assert "OLD-BUT-FINE" in result
+
+
+# ---------------------------------------------------------------------------
+# T8: partial coverage merge in rerank()
+# ---------------------------------------------------------------------------
+
+
+def test_rerank_partial_coverage_merges_and_leaves_rest_unscored():
+    """External scores cover only some grants; the rest fall through and
+    are explicitly counted as unscored when no API client is available."""
+    from grant_hunter import reranker as rk
+
+    grants = _make_grants(5)  # GR-000 .. GR-004
+
+    fake_external = {
+        "GR-000": rk.LLMScoreResult(
+            grant_id="GR-000", research_alignment=5, institutional_fit=5,
+            strategic_value=5, feasibility=5, rationale="covered",
+        ),
+    }
+
+    with (
+        patch.object(rk, "load_external_scores", return_value=fake_external),
+        patch.object(rk, "_ANTHROPIC_AVAILABLE", False),
+    ):
+        reranker = rk.LLMReranker()
+        result = reranker.rerank(grants)
+
+    assert len(result) == 5
+
+    by_id = {g.id: g for g in result}
+    assert by_id["GR-000"].llm_score is not None
+    for gid in ("GR-001", "GR-002", "GR-003", "GR-004"):
+        assert by_id[gid].llm_score is None
+
+    assert reranker.last_coverage == {"covered": 1, "total": 5}
+
+
+def test_rerank_partial_coverage_uncovered_uses_api_path():
+    """Uncovered grants fall through to the cache/API path (_score_batch),
+    not discarded by an early return."""
+    from grant_hunter import reranker as rk
+
+    grants = _make_grants(3)  # GR-000, GR-001, GR-002
+
+    fake_external = {
+        "GR-000": rk.LLMScoreResult(
+            grant_id="GR-000", research_alignment=5, institutional_fit=5,
+            strategic_value=5, feasibility=5, rationale="covered",
+        ),
+    }
+
+    call_batches = []
+
+    def fake_score_batch(batch, profile):
+        call_batches.extend(g.id for g in batch)
+        return {
+            g.id: rk.LLMScoreResult(
+                grant_id=g.id, research_alignment=2, institutional_fit=2,
+                strategic_value=2, feasibility=2, rationale="via api",
+            )
+            for g in batch
+        }
+
+    with (
+        patch.object(rk, "load_external_scores", return_value=fake_external),
+        patch.object(rk, "LLM_RERANK_ENABLED", True),
+        patch.object(rk, "_ANTHROPIC_AVAILABLE", True),
+    ):
+        reranker = rk.LLMReranker()
+        with patch.object(reranker, "_score_batch", side_effect=fake_score_batch):
+            result = reranker.rerank(grants)
+
+    # Only the uncovered grants should have been sent to the API path
+    assert sorted(call_batches) == ["GR-001", "GR-002"]
+    assert all(g.llm_score is not None for g in result)
+    assert reranker.last_coverage == {"covered": 3, "total": 3}
+
+
 def test_mcp_tool_score_with_subagent():
     """MCP tool loads external scores and filters by tier."""
     from grant_hunter import reranker as rk

@@ -14,6 +14,7 @@ from typing import Dict, List, Tuple
 from grant_hunter.collectors.nih import NIHCollector
 from grant_hunter.collectors.eu_portal import EUPortalCollector
 from grant_hunter.collectors.grants_gov import GrantsGovCollector
+from grant_hunter.collectors.korea_iris import KoreaIRISCollector
 from grant_hunter.collectors.base import BaseCollector
 from grant_hunter.eligibility import EligibilityEngine
 from grant_hunter.filters import score_and_rank_grants, diff_grants
@@ -80,7 +81,7 @@ def _collect_with_retry(collector_fn, source_name: str, max_retries: int = 3, ti
     return []
 
 
-ACTIVE_COLLECTORS = {"nih", "eu", "grants_gov"}
+ACTIVE_COLLECTORS = {"nih", "eu", "grants_gov", "korea"}
 
 
 def check_staleness(snapshot_dir: Path, max_age_hours: int = 48) -> list:
@@ -162,6 +163,7 @@ def run_pipeline() -> dict:
         NIHCollector(),
         EUPortalCollector(),
         GrantsGovCollector(),
+        KoreaIRISCollector(),
     ]
 
     all_current: List[Grant] = []
@@ -219,6 +221,7 @@ def run_pipeline() -> dict:
 
     # ── 3.5. LLM re-ranking (optional) ────────────────────────────────────
     from grant_hunter.config import LLM_RERANK_ENABLED, LLM_RERANK_THRESHOLD
+    llm_coverage = None
     if LLM_RERANK_ENABLED:
         from grant_hunter.reranker import LLMReranker
         try:
@@ -231,6 +234,7 @@ def run_pipeline() -> dict:
             scored = reranked + non_candidates
             # Re-sort by blended score (reranked grants have it), then by relevance_score
             scored.sort(key=lambda g: getattr(g, "blended_score", g.relevance_score), reverse=True)
+            llm_coverage = reranker.last_coverage
             logger.info("LLM reranking complete")
         except Exception as exc:
             logger.warning("LLM reranking failed (non-fatal): %s", exc)
@@ -341,6 +345,7 @@ def run_pipeline() -> dict:
         "validation_passed": validation_passed,
         "validation_rejected": validation_rejected,
         "stale_sources": stale_sources,
+        "llm_coverage": llm_coverage,
     }
 
     # ── 10.5. Persist run history + anomaly detection ─────────────────────
@@ -372,6 +377,8 @@ def run_pipeline() -> dict:
     logger.info("  Report    : %s", report_path)
     logger.info("  Dashboard : %s", dashboard_path)
     logger.info("  Stale sources: %s", stale_sources or "none")
+    if llm_coverage is not None:
+        logger.info("  LLM coverage: %d/%d", llm_coverage["covered"], llm_coverage["total"])
     for src, s in stats.items():
         ok = "OK" if s["success"] else f"FAIL({s['error']})"
         logger.info("  [%s] collected=%d filtered=%d status=%s", src, s["collected"], s["filtered"], ok)

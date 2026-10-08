@@ -167,3 +167,74 @@ def test_grants_gov_parse_returns_none_without_id():
     grant = collector._parse({"title": "No ID grant"})
     assert grant is None
 
+
+
+# ── Regression: collect() must not silently zero out AMR-only results ────────
+#
+# Root cause (see src/grant_hunter/collectors/amr_filter.py):
+# amr_ai_post_filter() requires BOTH an AMR keyword AND a literal AI keyword
+# (e.g. "machine learning", "artificial intelligence") in the same grant's
+# title+description. Real NIH/Grants.gov opportunities about antimicrobial
+# resistance almost never contain that literal AI phrasing, so in production
+# this zeroed out ~100% of results every day since the filter was introduced
+# (pipeline log: "Total collected: 168 unique opportunities (0 passed AMR+AI
+# filter, 0.0%)"), which pipeline._run_collector() then misreports as
+# "returned no results after retries" and skips saving a snapshot.
+#
+# Relevance filtering is already handled downstream by
+# grant_hunter.filters.passes_keyword_gate()/score_and_rank_grants(), which
+# implements a tiered AMR+AI / AMR-only / skip scheme instead of a hard
+# AND-gate. Collectors should return raw deduped results and let that
+# downstream stage rank/filter them.
+
+def test_nih_collect_does_not_drop_amr_only_grants():
+    collector = NIHCollector()
+    amr_only_grant = Grant(
+        id="PAR-25-999",
+        title="Novel antibiotic resistance mechanisms study",
+        agency="HHS-NIH11",
+        source="nih",
+        url="https://example.com",
+        description="A study of resistance mechanisms in carbapenem-resistant bacteria.",
+        deadline=None,
+        amount_min=None,
+        amount_max=None,
+        duration_months=None,
+        keywords=[],
+        raw_data={},
+        fetched_at=datetime.utcnow(),
+    )
+    with patch.object(NIHCollector, "_search_term_safe", return_value=[amr_only_grant]):
+        grants = collector.collect()
+    assert len(grants) > 0, (
+        "collect() returned 0 grants for an AMR-only result — the collector is "
+        "still applying the hard AMR+AI AND post-filter at collection time"
+    )
+    assert any(g.id == "PAR-25-999" for g in grants)
+
+
+def test_grants_gov_collect_does_not_drop_amr_only_grants():
+    collector = GrantsGovCollector()
+    amr_only_grant = Grant(
+        id="GG-999",
+        title="Drug resistant bacteria surveillance program",
+        agency="HHS",
+        source="grants_gov",
+        url="https://example.com",
+        description="Surveillance of multidrug resistant pathogens in hospital settings.",
+        deadline=None,
+        amount_min=None,
+        amount_max=None,
+        duration_months=None,
+        keywords=[],
+        raw_data={},
+        fetched_at=datetime.utcnow(),
+    )
+    with patch.object(GrantsGovCollector, "_search", return_value=[amr_only_grant]), \
+         patch.object(GrantsGovCollector, "_fetch_detail", return_value=None):
+        grants = collector.collect()
+    assert len(grants) > 0, (
+        "collect() returned 0 grants for an AMR-only result — the collector is "
+        "still applying the hard AMR+AI AND post-filter at collection time"
+    )
+    assert any(g.id == "GG-999" for g in grants)

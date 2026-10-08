@@ -60,6 +60,7 @@ def check_volume_anomaly(summary: dict, history_file: Path) -> list[str]:
     1. Any source collected 0 grants (and was previously successful)
     2. Total collected dropped >50% vs average of last 7 runs
     3. Any source failed (success=False)
+    4. LLM reranker coverage is less than the total number of grants
     """
     alerts = []
     history = load_run_history(history_file)
@@ -80,6 +81,16 @@ def check_volume_anomaly(summary: dict, history_file: Path) -> list[str]:
             alerts.append(
                 f"VOLUME_DROP: collected {current} vs 7-day avg {avg_collected:.0f} "
                 f"({current / avg_collected * 100:.0f}% of average)"
+            )
+
+    # Rule 4: LLM reranker coverage
+    llm_coverage = summary.get("llm_coverage")
+    if llm_coverage:
+        covered = llm_coverage.get("covered", 0)
+        total = llm_coverage.get("total", 0)
+        if total > 0 and covered < total:
+            alerts.append(
+                f"LLM_COVERAGE_LOW: {covered}/{total} grants scored by LLM layer"
             )
 
     return alerts

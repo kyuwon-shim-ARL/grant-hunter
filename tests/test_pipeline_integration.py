@@ -99,11 +99,19 @@ class TestPipelineCollectFilterScoreChain:
         mock_gg.load_previous_snapshot.return_value = []
         mock_gg.save_snapshot.return_value = tmp_path / "snapshots" / "grants_gov_20260318.json"
 
+        mock_korea = MagicMock()
+        mock_korea.name = "korea"
+        mock_korea.collect.return_value = []
+        mock_korea.has_previous_snapshot.return_value = True
+        mock_korea.load_previous_snapshot.return_value = []
+        mock_korea.save_snapshot.return_value = tmp_path / "snapshots" / "korea_20260318.json"
+
         config_patches = _patch_config_dirs(tmp_path)
 
         with patch("grant_hunter.pipeline.NIHCollector", return_value=mock_nih), \
              patch("grant_hunter.pipeline.EUPortalCollector", return_value=mock_eu), \
              patch("grant_hunter.pipeline.GrantsGovCollector", return_value=mock_gg), \
+             patch("grant_hunter.pipeline.KoreaIRISCollector", return_value=mock_korea), \
              patch("grant_hunter.pipeline._send_email_report", return_value=True), \
              patch("grant_hunter.pipeline.generate_html_report", return_value=tmp_path / "reports" / "report.html"), \
              patch("grant_hunter.pipeline.generate_dashboard", return_value=tmp_path / "reports" / "dashboard.html"), \
@@ -175,11 +183,19 @@ class TestPipelinePartialCollectorFailure:
         mock_gg.load_previous_snapshot.return_value = []
         mock_gg.save_snapshot.return_value = tmp_path / "snapshots" / "grants_gov_20260318.json"
 
+        mock_korea = MagicMock()
+        mock_korea.name = "korea"
+        mock_korea.collect.return_value = []
+        mock_korea.has_previous_snapshot.return_value = True
+        mock_korea.load_previous_snapshot.return_value = []
+        mock_korea.save_snapshot.return_value = tmp_path / "snapshots" / "korea_20260318.json"
+
         config_patches = _patch_config_dirs(tmp_path)
 
         with patch("grant_hunter.pipeline.NIHCollector", return_value=mock_nih), \
              patch("grant_hunter.pipeline.EUPortalCollector", return_value=mock_eu), \
              patch("grant_hunter.pipeline.GrantsGovCollector", return_value=mock_gg), \
+             patch("grant_hunter.pipeline.KoreaIRISCollector", return_value=mock_korea), \
              patch("grant_hunter.pipeline._send_email_report", return_value=True), \
              patch("grant_hunter.pipeline.generate_html_report", return_value=tmp_path / "reports" / "report.html"), \
              patch("grant_hunter.pipeline.generate_dashboard", return_value=tmp_path / "reports" / "dashboard.html"), \
@@ -244,11 +260,19 @@ class TestPipelineSkipEmailFirstRun:
         mock_gg.load_previous_snapshot.return_value = []
         mock_gg.save_snapshot.return_value = tmp_path / "snapshots" / "grants_gov_20260318.json"
 
+        mock_korea = MagicMock()
+        mock_korea.name = "korea"
+        mock_korea.collect.return_value = []
+        mock_korea.has_previous_snapshot.return_value = False  # first run
+        mock_korea.load_previous_snapshot.return_value = []
+        mock_korea.save_snapshot.return_value = tmp_path / "snapshots" / "korea_20260318.json"
+
         config_patches = _patch_config_dirs(tmp_path)
 
         with patch("grant_hunter.pipeline.NIHCollector", return_value=mock_nih), \
              patch("grant_hunter.pipeline.EUPortalCollector", return_value=mock_eu), \
              patch("grant_hunter.pipeline.GrantsGovCollector", return_value=mock_gg), \
+             patch("grant_hunter.pipeline.KoreaIRISCollector", return_value=mock_korea), \
              patch("grant_hunter.pipeline._send_email_report") as mock_send_email, \
              patch("grant_hunter.pipeline.generate_html_report", return_value=tmp_path / "reports" / "report.html"), \
              patch("grant_hunter.pipeline.generate_dashboard", return_value=tmp_path / "reports" / "dashboard.html"), \

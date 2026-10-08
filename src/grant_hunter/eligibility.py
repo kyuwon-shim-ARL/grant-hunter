@@ -221,6 +221,12 @@ class EligibilityEngine:
         if is_nih_foreign_eligible:
             eligible_rules.append("NIH_FOREIGN_ELIGIBLE")
 
+        # Korean domestic source: IPK is a Korean non-profit research institute,
+        # so Korean national R&D announcements are domestic to IPK (not excluded
+        # by the US/EU-oriented rules above, which are English-phrase based).
+        if source == "korea":
+            eligible_rules.append("KR_DOMESTIC_SOURCE")
+
         # ── Decision ──────────────────────────────────────────────────────────
         all_rules = ineligible_rules + eligible_rules
 

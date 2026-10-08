@@ -51,6 +51,12 @@ _CACHE_TTL_DAYS = 90
 _BATCH_SIZE = 5
 _MAX_BACKOFF_SECS = 30.0
 
+# Max age (days) of a subagent_scores_*.json file before it is considered
+# stale and ignored. Override via GRANT_HUNTER_EXTERNAL_SCORES_MAX_AGE_DAYS.
+EXTERNAL_SCORES_MAX_AGE_DAYS = int(
+    os.environ.get("GRANT_HUNTER_EXTERNAL_SCORES_MAX_AGE_DAYS", "14")
+)
+
 # ── Scoring prompt template (versioned via hash) ──────────────────────────────
 
 SCORING_PROMPT_TEMPLATE = """\
@@ -243,14 +249,47 @@ def _cache_read_stale(cache_dir: Path, key: str) -> Optional[LLMScoreResult]:
 # ── External scores loader (subagent results) ───────────────────────────────
 
 
+def _external_scores_age_days(path: Path, data: Dict[str, Any]) -> Optional[float]:
+    """Return the age (in days) of a subagent_scores file.
+
+    Prefers the ``scored_at`` field inside the file; falls back to the
+    date suffix in the filename (``subagent_scores_YYYY-MM-DD.json``).
+    Returns None if no usable date can be determined.
+    """
+    scored_at_str = data.get("scored_at", "")
+    dt: Optional[datetime] = None
+    if scored_at_str:
+        try:
+            dt = datetime.fromisoformat(scored_at_str)
+        except ValueError:
+            dt = None
+
+    if dt is None:
+        date_part = path.stem.replace("subagent_scores_", "")
+        try:
+            dt = datetime.strptime(date_part, "%Y-%m-%d")
+        except ValueError:
+            return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - dt).total_seconds() / 86400.0
+
+
 def load_external_scores(
     scores_dir: Optional[Path] = None,
+    max_age_days: Optional[int] = None,
 ) -> Dict[str, LLMScoreResult]:
     """Load the most recent subagent_scores_*.json file.
 
     Looks for files matching ``subagent_scores_*.json`` in *scores_dir*,
     picks the most recent by filename date suffix, and returns a dict
     mapping ``grant_id -> LLMScoreResult``.
+
+    If *max_age_days* is given and the file is older than that, it is
+    ignored (treated as if it did not exist) and a WARNING is logged with
+    the file's age and how many grants it covered. When *max_age_days* is
+    None (the default), no staleness check is performed.
 
     Returns an empty dict if no files are found or on parse error.
     """
@@ -274,6 +313,16 @@ def load_external_scores(
     if not isinstance(data, dict) or "grants" not in data:
         logger.warning("Invalid external scores format in %s", latest)
         return {}
+
+    if max_age_days is not None:
+        age_days = _external_scores_age_days(latest, data)
+        if age_days is not None and age_days > max_age_days:
+            logger.warning(
+                "External scores file %s is stale (age=%.1f days, max=%d days); "
+                "ignoring %d grant scores from it",
+                latest.name, age_days, max_age_days, len(data.get("grants", [])),
+            )
+            return {}
 
     results: Dict[str, LLMScoreResult] = {}
     for item in data["grants"]:
@@ -432,6 +481,8 @@ class LLMReranker:
         self._cache_dir = cache_dir or (DATA_HOME / "cache" / "reranker")
         self._ipk_profile = ipk_profile
         self._client: Optional[Any] = None
+        # Coverage of the most recent rerank() call: {"covered": int, "total": int}
+        self.last_coverage: Optional[Dict[str, int]] = None
 
         if not _ANTHROPIC_AVAILABLE:
             logger.warning("LLMReranker: anthropic package unavailable; scoring will be skipped.")
@@ -560,27 +611,43 @@ class LLMReranker:
         if not grants:
             return grants
 
-        # Step 1: Try external scores (subagent results) first
-        external = load_external_scores()
+        total = len(grants)
+
+        # Step 1: Try external scores (subagent results), per-grant merge.
+        # External scores only apply to the grants they cover (matched by
+        # id); grants not covered fall through to the cache/API path below
+        # instead of being discarded by an early return.
+        external = load_external_scores(max_age_days=EXTERNAL_SCORES_MAX_AGE_DAYS)
+        uncovered = [g for g in grants if g.id not in external]
+        covered_count = total - len(uncovered)
+
         if external:
-            logger.info("Using external subagent scores (%d grants)", len(external))
-            return self._apply_scores(grants, external)
+            logger.info(
+                "External subagent scores: coverage %d/%d grants",
+                covered_count, total,
+            )
 
-        # Step 2: API path (requires anthropic package + env toggle)
-        if not _ANTHROPIC_AVAILABLE or not LLM_RERANK_ENABLED:
-            logger.debug("LLM reranking skipped; sorting by relevance_score only.")
-            for grant in grants:
-                if not hasattr(grant, "llm_score"):
-                    object.__setattr__(grant, "llm_score", None)
-                    object.__setattr__(grant, "llm_details", None)
-            return sorted(grants, key=lambda g: g.relevance_score, reverse=True)
+        all_scores: Dict[str, Optional[LLMScoreResult]] = dict(external)
 
-        # Process in batches via API
-        all_scores: Dict[str, Optional[LLMScoreResult]] = {}
-        for i in range(0, len(grants), _BATCH_SIZE):
-            batch = grants[i : i + _BATCH_SIZE]
-            batch_scores = self._score_batch(batch, profile)
-            all_scores.update(batch_scores)
+        if uncovered:
+            if not _ANTHROPIC_AVAILABLE or not LLM_RERANK_ENABLED:
+                logger.warning(
+                    "LLM coverage %d/%d: cache/API path unavailable or disabled; "
+                    "%d grants remain unscored",
+                    covered_count, total, len(uncovered),
+                )
+                for grant in uncovered:
+                    all_scores.setdefault(grant.id, None)
+            else:
+                # Process uncovered grants in batches via cache/API
+                for i in range(0, len(uncovered), _BATCH_SIZE):
+                    batch = uncovered[i : i + _BATCH_SIZE]
+                    batch_scores = self._score_batch(batch, profile)
+                    all_scores.update(batch_scores)
+
+        final_covered = sum(1 for g in grants if all_scores.get(g.id) is not None)
+        self.last_coverage = {"covered": final_covered, "total": total}
+        logger.info("LLM coverage: %d/%d grants scored", final_covered, total)
 
         return self._apply_scores(grants, all_scores)
 
@@ -599,7 +666,7 @@ class LLMReranker:
                 # Blended: 60% tfidf + 40% LLM
                 blended = 0.60 * grant.relevance_score + 0.40 * llm_normalized
                 object.__setattr__(grant, "llm_score", round(llm_normalized, 4))
-                object.__setattr__(grant, "llm_details", score_result)
+                object.__setattr__(grant, "llm_details", asdict(score_result))
                 object.__setattr__(grant, "blended_score", round(blended, 4))
             else:
                 object.__setattr__(grant, "llm_score", None)

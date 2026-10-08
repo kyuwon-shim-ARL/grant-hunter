@@ -115,7 +115,14 @@
       "원헬스",
       "감시체계",
       "병원감염",
-      "내성전파"
+      "내성전파",
+      "항생제",
+      "항균",
+      "내성",
+      "감염병",
+      "감염",
+      "세균",
+      "병원체"
     ]
   },
   "ai": {
@@ -198,32 +205,8 @@
       "데이터분석",
       "기계학습",
       "예측모델",
-      "전이학습"
-    ]
-  },
-  "amr_precision_filter": {
-    "en": [
-      "antimicrobial resistance",
-      "antibiotic resistance",
-      "antimicrobial resistant",
-      "drug-resistant",
-      "\\bAMR\\b",
-      "ESKAPE",
-      "carbapenem",
-      "\\bMRSA\\b",
-      "multidrug resistant",
-      "antibacterial"
-    ]
-  },
-  "ai_precision_filter": {
-    "en": [
-      "artificial intelligence",
-      "machine learning",
-      "deep learning",
-      "neural network",
-      "natural language processing",
-      "large language model",
-      "computational biology"
+      "전이학습",
+      "AI"
     ]
   },
   "drug_discovery": {
@@ -298,7 +281,15 @@
       "내성기전",
       "작용기전",
       "의약화학",
-      "세포활성평가"
+      "세포활성평가",
+      "신약",
+      "치료제",
+      "후보물질",
+      "바이오",
+      "보건의료",
+      "기초연구",
+      "개인기초",
+      "세종과학펠로우십"
     ]
   }
 }
