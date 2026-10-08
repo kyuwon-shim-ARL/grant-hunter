@@ -1,496 +1,781 @@
 version: 3
-updated: "2026-03-20T10:30:00Z"
+updated: '2026-03-20T10:30:00Z'
 scan_paths:
-  - outputs/
+- outputs/
 foundations: {}
 milestone:
-  name: "v2.5 - 품질 강화 + 모니터링"
-  description: "MCP 테스트 커버리지, 파이프라인 모니터링, 스코어링 검증 — 4-agent 비평 수렴 결과 품질 우선"
-  created: "2026-03-18"
+  name: v2.5 - 품질 강화 + 모니터링
+  description: MCP 테스트 커버리지, 파이프라인 모니터링, 스코어링 검증 — 4-agent 비평 수렴 결과 품질 우선
+  created: '2026-03-18'
 experiments:
   e001:
-    title: "Phase 0 - NTIS/IRIS 공식 알림 등록 + 캘린더 마감 리마인더"
+    title: Phase 0 - NTIS/IRIS 공식 알림 등록 + 캘린더 마감 리마인더
     status: concluded
     issue: 1
-    created: "2026-03-16"
-    hypothesis: "코드 없이 공식 알림 서비스만으로 한국 정부 과제 모니터링의 70%를 해결할 수 있다"
-    result: "캘린더 이벤트 생성 완료. NTIS/IRIS 등록은 사용자 수동 진행 필요."
+    created: '2026-03-16'
+    hypothesis: 코드 없이 공식 알림 서비스만으로 한국 정부 과제 모니터링의 70%를 해결할 수 있다
+    result: 캘린더 이벤트 생성 완료. NTIS/IRIS 등록은 사용자 수동 진행 필요.
   e002:
-    title: "Phase 1 - 핵심 API 수집기 (NIH + EU + grants.gov)"
+    title: Phase 1 - 핵심 API 수집기 (NIH + EU + grants.gov)
     status: validated
     issue: 2
-    created: "2026-03-16"
-    hypothesis: "국제 과제 3개 API + 키워드 매칭으로 Tier 1-2 국제 Grant의 85%를 자동 포착할 수 있다"
-    result: "NIH 4827, EU 10, Grants.gov 201건 수집 확인. 3개 API 모두 정상 동작."
+    created: '2026-03-16'
+    hypothesis: 국제 과제 3개 API + 키워드 매칭으로 Tier 1-2 국제 Grant의 85%를 자동 포착할 수 있다
+    result: NIH 4827, EU 10, Grants.gov 201건 수집 확인. 3개 API 모두 정상 동작.
   e003:
-    title: "Phase 2 - AMR 특화 크롤러 확장 (CARB-X, RIGHT, Pasteur)"
+    title: Phase 2 - AMR 특화 크롤러 확장 (CARB-X, RIGHT, Pasteur)
     status: validated
     issue: 4
-    created: "2026-03-16"
-    depends_on: [e002]
-    hypothesis: "5개 핵심 사이트 크롤러로 AMR 특화 Grant 95%를 커버하면서 유지보수 부담을 관리 가능 수준으로 유지할 수 있다"
-    result: "CARB-X 1, RIGHT 31, Gates 11, Pasteur 5, Google.org 2건. 8개 소스 합계 5088건."
+    created: '2026-03-16'
+    depends_on:
+    - e002
+    hypothesis: 5개 핵심 사이트 크롤러로 AMR 특화 Grant 95%를 커버하면서 유지보수 부담을 관리 가능 수준으로 유지할 수 있다
+    result: CARB-X 1, RIGHT 31, Gates 11, Pasteur 5, Google.org 2건. 8개 소스 합계 5088건.
   e004:
-    title: "Phase 3 - 적격성 엔진 + 관련성 스코어링"
+    title: Phase 3 - 적격성 엔진 + 관련성 스코어링
     status: validated
     issue: 3
-    created: "2026-03-16"
-    depends_on: [e002, e003]
-    hypothesis: "규칙 기반 적격성 판정 + 키워드 TF-IDF로 LLM 없이 80% 정확도를 달성할 수 있다"
-    result: "898건 필터 → 449 eligible, 377 uncertain, 72 ineligible. 8규칙 엔진 + TF-IDF 스코어러."
+    created: '2026-03-16'
+    depends_on:
+    - e002
+    - e003
+    hypothesis: 규칙 기반 적격성 판정 + 키워드 TF-IDF로 LLM 없이 80% 정확도를 달성할 수 있다
+    result: 898건 필터 → 449 eligible, 377 uncertain, 72 ineligible. 8규칙 엔진 + TF-IDF
+      스코어러.
   e005:
-    title: "PyPI 패키지 구조 전환 (grant-hunter-mcp)"
+    title: PyPI 패키지 구조 전환 (grant-hunter-mcp)
     status: validated
     issue: 5
-    created: "2026-03-16"
-    depends_on: [e002, e003, e004]
-    hypothesis: "src/ 레이아웃 + 환경변수 기반 config로 전환하면 MCP 서버에서 독립적으로 import 가능하다"
-    result: "pip install -e . 검증 완료. 모든 import 정상. architect 승인."
+    created: '2026-03-16'
+    depends_on:
+    - e002
+    - e003
+    - e004
+    hypothesis: src/ 레이아웃 + 환경변수 기반 config로 전환하면 MCP 서버에서 독립적으로 import 가능하다
+    result: pip install -e . 검증 완료. 모든 import 정상. architect 승인.
   e006:
-    title: "Python MCP Server 구현 (stdio transport)"
+    title: Python MCP Server 구현 (stdio transport)
     status: validated
     issue: 6
-    created: "2026-03-16"
-    depends_on: [e005]
-    hypothesis: "9개 MCP tool로 grant_hunter의 모든 기능을 Claude Code 대화에서 자연어로 사용할 수 있다"
-    result: "JSON-RPC initialize + tools/list + grant_search E2E 검증 완료. 9개 tool 정상 응답."
+    created: '2026-03-16'
+    depends_on:
+    - e005
+    hypothesis: 9개 MCP tool로 grant_hunter의 모든 기능을 Claude Code 대화에서 자연어로 사용할 수 있다
+    result: JSON-RPC initialize + tools/list + grant_search E2E 검증 완료. 9개 tool 정상
+      응답.
   e007:
-    title: "Claude Code Plugin 래퍼 (npm + skills)"
+    title: Claude Code Plugin 래퍼 (npm + skills)
     status: validated
     issue: 7
-    created: "2026-03-16"
-    depends_on: [e006]
-    hypothesis: "npm thin wrapper + PyPI MCP server 2-패키지 구조로 Claude Code 플러그인 배포가 가능하다"
-    result: "plugin.json + .mcp.json + 5 skills 구조 완성. architect 승인."
+    created: '2026-03-16'
+    depends_on:
+    - e006
+    hypothesis: npm thin wrapper + PyPI MCP server 2-패키지 구조로 Claude Code 플러그인 배포가
+      가능하다
+    result: plugin.json + .mcp.json + 5 skills 구조 완성. architect 승인.
   e008:
-    title: "Fix cron + delete root duplicates + unify snapshot paths"
+    title: Fix cron + delete root duplicates + unify snapshot paths
     status: validated
     issue: 8
-    created: "2026-03-17"
-    depends_on: [e005]
-    hypothesis: "cron을 .venv python으로 수정하고 루트 중복 삭제하면 일일 파이프라인이 정상 동작한다"
-    result: "run_pipeline.sh 수정, crontab 수정, 루트 중복 14파일 삭제. 파이프라인 5088건 수집 성공."
+    created: '2026-03-17'
+    depends_on:
+    - e005
+    hypothesis: cron을 .venv python으로 수정하고 루트 중복 삭제하면 일일 파이프라인이 정상 동작한다
+    result: run_pipeline.sh 수정, crontab 수정, 루트 중복 14파일 삭제. 파이프라인 5088건 수집 성공.
   e009:
-    title: "Fix broken collectors (EU Portal, Grants.gov, AMR crawlers)"
+    title: Fix broken collectors (EU Portal, Grants.gov, AMR crawlers)
     status: validated
     issue: 9
-    created: "2026-03-17"
-    depends_on: [e008]
-    hypothesis: "8개 collector 모두 실제 데이터를 수집할 수 있다"
-    result: "8/8 소스 정상. Pasteur URL 수정. 합계 5088건 수집."
+    created: '2026-03-17'
+    depends_on:
+    - e008
+    hypothesis: 8개 collector 모두 실제 데이터를 수집할 수 있다
+    result: 8/8 소스 정상. Pasteur URL 수정. 합계 5088건 수집.
   e010:
-    title: "Add test suite (eligibility, filters, collectors)"
+    title: Add test suite (eligibility, filters, collectors)
     status: validated
     issue: 10
-    created: "2026-03-17"
-    depends_on: [e005]
-    hypothesis: "43개 pytest 테스트로 핵심 비즈니스 로직의 신뢰성을 확보할 수 있다"
-    result: "43 passed in 8.11s. eligibility 17, filters 6, models 4, scoring 4, collectors 11, pipeline 1."
+    created: '2026-03-17'
+    depends_on:
+    - e005
+    hypothesis: 43개 pytest 테스트로 핵심 비즈니스 로직의 신뢰성을 확보할 수 있다
+    result: 43 passed in 8.11s. eligibility 17, filters 6, models 4, scoring 4, collectors
+      11, pipeline 1.
   e011:
-    title: "E2E verify MCP server + plugin installation"
+    title: E2E verify MCP server + plugin installation
     status: validated
     issue: 11
-    created: "2026-03-17"
-    depends_on: [e006]
-    hypothesis: "MCP server가 stdio transport로 실제 JSON-RPC 요청에 응답한다"
-    result: "initialize → tools/list(9개) → grant_search(실제 결과 반환) E2E 검증 완료."
+    created: '2026-03-17'
+    depends_on:
+    - e006
+    hypothesis: MCP server가 stdio transport로 실제 JSON-RPC 요청에 응답한다
+    result: initialize → tools/list(9개) → grant_search(실제 결과 반환) E2E 검증 완료.
   e012:
-    title: "Experiment finalization + MANIFEST status updates"
+    title: Experiment finalization + MANIFEST status updates
     status: validated
     issue: 12
-    created: "2026-03-17"
-    hypothesis: "모든 실험 상태를 실제 결과 기반으로 업데이트한다"
-    result: "12개 실험 상태 업데이트 완료. experiment-log.md 생성."
+    created: '2026-03-17'
+    hypothesis: 모든 실험 상태를 실제 결과 기반으로 업데이트한다
+    result: 12개 실험 상태 업데이트 완료. experiment-log.md 생성.
   e013:
-    title: "Score Pipeline Bug Fix + 듀얼 스코어링 통합"
+    title: Score Pipeline Bug Fix + 듀얼 스코어링 통합
     status: validated
     issue: 13
-    created: "2026-03-17"
-    depends_on: [e004]
-    hypothesis: "스냅샷 저장 후 스코어링 결과를 persist하고 듀얼 스코어링을 단일 시스템으로 통합하면, 인터랙티브 리포트에서 실제 relevance score가 표시된다"
-    result: "5088건 전체 non-zero score 표시 (범위 0.01-0.30). 듀얼→단일 RelevanceScorer 통합. 48 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e004
+    hypothesis: 스냅샷 저장 후 스코어링 결과를 persist하고 듀얼 스코어링을 단일 시스템으로 통합하면, 인터랙티브 리포트에서 실제
+      relevance score가 표시된다
+    result: 5088건 전체 non-zero score 표시 (범위 0.01-0.30). 듀얼→단일 RelevanceScorer 통합. 48
+      tests pass.
   e014:
-    title: "스코어링 알고리즘 재설계 (변별력 확보)"
+    title: 스코어링 알고리즘 재설계 (변별력 확보)
     status: validated
     issue: 14
-    created: "2026-03-17"
-    depends_on: [e013]
-    hypothesis: "키워드 확장(42→150+) + AI FP 해결 + amount_bonus 조건부 + 가중치 재조정으로 점수 분포 표준편차를 0.15 이상으로 확대하고, 상위/하위 50건 점수 차이 0.4 이상을 달성한다"
-    result: "키워드 56→109개 확장, AI FP 수정, amount_bonus 조건부. std=0.094, Top/Bottom 차=0.48, max=0.595. 159건 0점(비관련). 63 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e013
+    hypothesis: 키워드 확장(42→150+) + AI FP 해결 + amount_bonus 조건부 + 가중치 재조정으로 점수 분포 표준편차를
+      0.15 이상으로 확대하고, 상위/하위 50건 점수 차이 0.4 이상을 달성한다
+    result: 키워드 56→109개 확장, AI FP 수정, amount_bonus 조건부. std=0.094, Top/Bottom 차=0.48,
+      max=0.595. 159건 0점(비관련). 63 tests pass.
   e015:
-    title: "연구자 프로필 기반 개인화 시스템"
+    title: 연구자 프로필 기반 개인화 시스템
     status: validated
     issue: 15
-    created: "2026-03-17"
-    depends_on: [e013]
-    hypothesis: "연구자 프로필 프리셋 4종으로 동일 grant pool에서 프로필별 Top-20의 Jaccard distance가 0.5 이상이 된다"
-    result: "5개 프로필 프리셋. profiles.py + RelevanceScorer 프로필 지원. HTML 프로필 드롭다운 + 클라이언트 재스코어링. 63 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e013
+    hypothesis: 연구자 프로필 프리셋 4종으로 동일 grant pool에서 프로필별 Top-20의 Jaccard distance가 0.5
+      이상이 된다
+    result: 5개 프로필 프리셋. profiles.py + RelevanceScorer 프로필 지원. HTML 프로필 드롭다운 + 클라이언트
+      재스코어링. 63 tests pass.
   e016:
-    title: "MECE 계층 분류 + 인터랙티브 리포트 재설계"
+    title: MECE 계층 분류 + 인터랙티브 리포트 재설계
     status: validated
     issue: 16
-    created: "2026-03-17"
-    depends_on: [e014, e015]
-    hypothesis: "3축 분류 + 우선순위 티어링으로 미분류 비율 5% 미만, 각 티어별 분포가 Tier1<Tier2<Tier3<Tier4를 달성한다"
-    result: "3축 분류(research_stage×funding_type×urgency) + 4-tier 우선순위. 미분류 4.2%(<5%). T1(128)<T2(896)<T3(1584)<T4(2480) 단조 분포 달성. 82 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e014
+    - e015
+    hypothesis: 3축 분류 + 우선순위 티어링으로 미분류 비율 5% 미만, 각 티어별 분포가 Tier1<Tier2<Tier3<Tier4를
+      달성한다
+    result: 3축 분류(research_stage×funding_type×urgency) + 4-tier 우선순위. 미분류 4.2%(<5%).
+      T1(128)<T2(896)<T3(1584)<T4(2480) 단조 분포 달성. 82 tests pass.
   e017:
-    title: "NIH 공개공모 수집기 전환 (Reporter→Grants.gov FOA)"
+    title: NIH 공개공모 수집기 전환 (Reporter→Grants.gov FOA)
     status: validated
     issue: 17
-    created: "2026-03-17"
-    depends_on: [e002]
-    milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-    hypothesis: "Grants.gov FOA API로 전환하면 실제 지원 가능한 NIH 공개공모를 수집하고, 마감일 있는 레코드 비율 80% 이상 달성"
-    result: "NIH Reporter→Grants.gov search2 API(HHS-NIH11 필터). fetchOpportunity로 상세 설명+금액 수집. 실제 open FOA 수집 확인."
+    created: '2026-03-17'
+    depends_on:
+    - e002
+    milestone: v2.0 - 실제 지원 가능 Grant 수집 시스템
+    hypothesis: Grants.gov FOA API로 전환하면 실제 지원 가능한 NIH 공개공모를 수집하고, 마감일 있는 레코드 비율 80%
+      이상 달성
+    result: NIH Reporter→Grants.gov search2 API(HHS-NIH11 필터). fetchOpportunity로 상세
+      설명+금액 수집. 실제 open FOA 수집 확인.
   e018:
-    title: "EU 공개공모 수집기 전환 (CORDIS→F&T Portal)"
+    title: EU 공개공모 수집기 전환 (CORDIS→F&T Portal)
     status: validated
     issue: 18
-    created: "2026-03-17"
-    depends_on: [e002]
-    milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-    hypothesis: "EU F&T Portal API로 전환하면 Horizon Europe 공개공모를 수집하고, 마감일 있는 비율 90% 이상 달성"
-    result: "CORDIS→grantsTenders.json 벌크 파일. open/forthcoming 상태 필터 + AMR/AI 키워드 매칭. ms→date 변환."
+    created: '2026-03-17'
+    depends_on:
+    - e002
+    milestone: v2.0 - 실제 지원 가능 Grant 수집 시스템
+    hypothesis: EU F&T Portal API로 전환하면 Horizon Europe 공개공모를 수집하고, 마감일 있는 비율 90% 이상
+      달성
+    result: CORDIS→grantsTenders.json 벌크 파일. open/forthcoming 상태 필터 + AMR/AI 키워드 매칭.
+      ms→date 변환.
   e019:
-    title: "웹 스크래퍼 정밀화 (5개 소스 실제 공고 페이지 타겟팅)"
+    title: 웹 스크래퍼 정밀화 (5개 소스 실제 공고 페이지 타겟팅)
     status: validated
     issue: 19
-    created: "2026-03-17"
-    depends_on: [e003]
-    milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-    hypothesis: "실제 공모 페이지만 타겟팅 + 상세 페이지 크롤링으로 유효 설명 비율 80% 이상 달성"
-    result: "5개 소스 URL 교정. 홈페이지/포트폴리오 제거, 실제 공모 페이지만 타겟팅."
+    created: '2026-03-17'
+    depends_on:
+    - e003
+    milestone: v2.0 - 실제 지원 가능 Grant 수집 시스템
+    hypothesis: 실제 공모 페이지만 타겟팅 + 상세 페이지 크롤링으로 유효 설명 비율 80% 이상 달성
+    result: 5개 소스 URL 교정. 홈페이지/포트폴리오 제거, 실제 공모 페이지만 타겟팅.
   e020:
-    title: "Grants.gov 상세 설명 수집 (synopsis→full description)"
+    title: Grants.gov 상세 설명 수집 (synopsis→full description)
     status: validated
     issue: 20
-    created: "2026-03-17"
-    depends_on: [e017]
-    milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-    hypothesis: "Full description 수집으로 키워드 매칭 정확도 향상, 필터 통과율 synopsis 대비 2배 이상 증가"
-    result: "fetchOpportunity 2차 fetch로 synopsisDesc + awardFloor/Ceiling 수집. Rate limiting 0.3s."
+    created: '2026-03-17'
+    depends_on:
+    - e017
+    milestone: v2.0 - 실제 지원 가능 Grant 수집 시스템
+    hypothesis: Full description 수집으로 키워드 매칭 정확도 향상, 필터 통과율 synopsis 대비 2배 이상 증가
+    result: fetchOpportunity 2차 fetch로 synopsisDesc + awardFloor/Ceiling 수집. Rate
+      limiting 0.3s.
   e021:
-    title: "데이터 유효성 검증 + 파이프라인 안정성"
+    title: 데이터 유효성 검증 + 파이프라인 안정성
     status: validated
     issue: 21
-    created: "2026-03-17"
-    depends_on: [e017, e018, e019]
-    milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-    hypothesis: "필수 필드 검증 + retry(3회) + staleness detection으로 데이터 품질 95% 이상, 장애 감지 100%"
-    result: "validate_grant() + _collect_with_retry(backoff 3회) + check_staleness(48h). Collection Summary 출력. 11 새 테스트. 95 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e017
+    - e018
+    - e019
+    milestone: v2.0 - 실제 지원 가능 Grant 수집 시스템
+    hypothesis: 필수 필드 검증 + retry(3회) + staleness detection으로 데이터 품질 95% 이상, 장애 감지
+      100%
+    result: validate_grant() + _collect_with_retry(backoff 3회) + check_staleness(48h).
+      Collection Summary 출력. 11 새 테스트. 95 tests pass.
   e022:
-    title: "스코어링 가중치 통일 + TF 정규화"
+    title: 스코어링 가중치 통일 + TF 정규화
     status: validated
     issue: 22
-    created: "2026-03-17"
-    depends_on: [e014]
-    milestone: "v2.0 - 실제 지원 가능 Grant 수집 시스템"
-    hypothesis: "단일 기본 가중치 + TF 길이 정규화로 불일치 0%, TF 변동계수 50% 감소"
-    result: "scoring.py _WEIGHTS를 profiles.py와 통일 {amr:0.40,ai:0.30,drug:0.20,amount:0.10}. TF에 log1p 길이 정규화. Python/JS 가중치 일치."
+    created: '2026-03-17'
+    depends_on:
+    - e014
+    milestone: v2.0 - 실제 지원 가능 Grant 수집 시스템
+    hypothesis: 단일 기본 가중치 + TF 길이 정규화로 불일치 0%, TF 변동계수 50% 감소
+    result: scoring.py _WEIGHTS를 profiles.py와 통일 {amr:0.40,ai:0.30,drug:0.20,amount:0.10}.
+      TF에 log1p 길이 정규화. Python/JS 가중치 일치.
   e023:
-    title: "라이브 파이프라인 실행 + v2.0 데이터 검증"
+    title: 라이브 파이프라인 실행 + v2.0 데이터 검증
     status: validated
     issue: 23
-    created: "2026-03-17"
-    depends_on: [e017, e018, e019, e020]
-    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
-    hypothesis: "v2.0 collector로 파이프라인을 실행하면 deadline 있는 레코드 비율 50% 이상, 유효 description 비율 80% 이상 달성"
-    result: "229수집→126검증→125dedup→1필터. NIH 34/34 desc 100%(avg 1531chars). EU 12/12 deadline 100%. forecastDesc fallback 수정. validation 20chars."
+    created: '2026-03-17'
+    depends_on:
+    - e017
+    - e018
+    - e019
+    - e020
+    milestone: v2.1 - 운영 검증 + 데이터 품질 강화
+    hypothesis: v2.0 collector로 파이프라인을 실행하면 deadline 있는 레코드 비율 50% 이상, 유효 description
+      비율 80% 이상 달성
+    result: 229수집→126검증→125dedup→1필터. NIH 34/34 desc 100%(avg 1531chars). EU 12/12
+      deadline 100%. forecastDesc fallback 수정. validation 20chars.
   e024:
-    title: "분류기 버그 수정 (expired=urgent, dedup 무효)"
+    title: 분류기 버그 수정 (expired=urgent, dedup 무효)
     status: validated
     issue: 24
-    created: "2026-03-17"
-    depends_on: [e016]
-    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
-    hypothesis: "expired guard + title-based dedup으로 중복 10% 이상 제거, 만료 공고 0건 urgent 달성"
-    result: "expired urgency 추가. cross_fingerprint() title 정규화 dedup. 라이브 테스트 1건 중복 제거 확인. 29 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e016
+    milestone: v2.1 - 운영 검증 + 데이터 품질 강화
+    hypothesis: expired guard + title-based dedup으로 중복 10% 이상 제거, 만료 공고 0건 urgent
+      달성
+    result: expired urgency 추가. cross_fingerprint() title 정규화 dedup. 라이브 테스트 1건 중복
+      제거 확인. 29 tests pass.
   e025:
-    title: "키워드 확장 + 필터 게이트 강화"
+    title: 키워드 확장 + 필터 게이트 강화
     status: validated
     issue: 25
-    created: "2026-03-17"
-    depends_on: [e014, e022]
-    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
-    hypothesis: "키워드 138→200+ 확장 + AMR 서브티어로 false positive 50% 감소"
-    result: "키워드 138→244 확장(+86). AMR core 38개 서브티어. 1 core OR 2+ broad 필터 게이트. 9 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e014
+    - e022
+    milestone: v2.1 - 운영 검증 + 데이터 품질 강화
+    hypothesis: 키워드 138→200+ 확장 + AMR 서브티어로 false positive 50% 감소
+    result: 키워드 138→244 확장(+86). AMR core 38개 서브티어. 1 core OR 2+ broad 필터 게이트. 9 tests
+      pass.
   e026:
-    title: "적격성 엔진 US_ONLY 패턴 확장"
+    title: 적격성 엔진 US_ONLY 패턴 확장
     status: validated
     issue: 26
-    created: "2026-03-17"
-    depends_on: [e004]
-    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
-    hypothesis: "US_ONLY 패턴 20개+ 확장으로 탐지율 80% 이상 달성"
-    result: "US_ONLY 10→31 패턴. EU auto-eligible→EU_SOURCE_LIKELY_ELIGIBLE(낮은 confidence) 분리. 21 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e004
+    milestone: v2.1 - 운영 검증 + 데이터 품질 강화
+    hypothesis: US_ONLY 패턴 20개+ 확장으로 탐지율 80% 이상 달성
+    result: US_ONLY 10→31 패턴. EU auto-eligible→EU_SOURCE_LIKELY_ELIGIBLE(낮은 confidence)
+      분리. 21 tests pass.
   e027:
-    title: "프로덕션 안정화 (스냅샷 로테이션, 실패 알림, 원자적 쓰기)"
+    title: 프로덕션 안정화 (스냅샷 로테이션, 실패 알림, 원자적 쓰기)
     status: validated
     issue: 27
-    created: "2026-03-17"
-    depends_on: [e021]
-    milestone: "v2.1 - 운영 검증 + 데이터 품질 강화"
-    hypothesis: "로테이션(7일) + 실패 이메일 + atomic write로 30일 무인 운영 가능"
-    result: "tmpfile+os.replace atomic write. 7일 rotation. 실패 시 send-email. 로그 ~/.grant-hunter/logs/ 통합. 5 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e021
+    milestone: v2.1 - 운영 검증 + 데이터 품질 강화
+    hypothesis: 로테이션(7일) + 실패 이메일 + atomic write로 30일 무인 운영 가능
+    result: tmpfile+os.replace atomic write. 7일 rotation. 실패 시 send-email. 로그 ~/.grant-hunter/logs/
+      통합. 5 tests pass.
   e028:
-    title: "AMP false positive 수정 + dead scraper 제거"
+    title: AMP false positive 수정 + dead scraper 제거
     status: validated
     issue: 28
-    created: "2026-03-17"
-    depends_on: [e025]
-    milestone: "v2.2 - 데이터 품질 정밀화"
-    hypothesis: "AMP 3글자 약어 제거 + 5개 dead scraper 삭제로 false positive 감소, 파이프라인 안정성 향상"
-    result: "AMP 키워드 삭제(antimicrobial peptide 유지). carb_x/right_foundation/gates_gc/pasteur_network/google_org 5개 collector 삭제. classifier challenge 감지 keyword 기반 전환."
+    created: '2026-03-17'
+    depends_on:
+    - e025
+    milestone: v2.2 - 데이터 품질 정밀화
+    hypothesis: AMP 3글자 약어 제거 + 5개 dead scraper 삭제로 false positive 감소, 파이프라인 안정성 향상
+    result: AMP 키워드 삭제(antimicrobial peptide 유지). carb_x/right_foundation/gates_gc/pasteur_network/google_org
+      5개 collector 삭제. classifier challenge 감지 keyword 기반 전환.
   e029:
-    title: "NIH 검색어 AMR 특화 정밀화"
+    title: NIH 검색어 AMR 특화 정밀화
     status: validated
     issue: 29
-    created: "2026-03-17"
-    depends_on: [e017]
-    milestone: "v2.2 - 데이터 품질 정밀화"
-    hypothesis: "AMR 특화 검색어 확장(6→12개)으로 NIH FOA 수집 recall 향상"
-    result: "ESKAPE pathogen, carbapenem resistant, multidrug resistant infection, antimicrobial stewardship, novel antibiotic, computational drug discovery antibiotic 6개 추가."
+    created: '2026-03-17'
+    depends_on:
+    - e017
+    milestone: v2.2 - 데이터 품질 정밀화
+    hypothesis: AMR 특화 검색어 확장(6→12개)으로 NIH FOA 수집 recall 향상
+    result: ESKAPE pathogen, carbapenem resistant, multidrug resistant infection,
+      antimicrobial stewardship, novel antibiotic, computational drug discovery antibiotic
+      6개 추가.
   e030:
-    title: "필터 완화 - AMR-OR-AI 2티어 시스템"
+    title: 필터 완화 - AMR-OR-AI 2티어 시스템
     status: validated
     issue: 30
-    created: "2026-03-17"
-    depends_on: [e025, e014]
-    milestone: "v2.2 - 데이터 품질 정밀화"
-    hypothesis: "AMR-only tier2 추가로 필터 통과 grant 수 3배 이상 증가, AMR+AI tier1은 상위 유지"
-    result: "passes_keyword_gate() tier1/tier2/skip 반환. tier2(AMR-only) score×0.5 페널티. 107 tests pass."
+    created: '2026-03-17'
+    depends_on:
+    - e025
+    - e014
+    milestone: v2.2 - 데이터 품질 정밀화
+    hypothesis: AMR-only tier2 추가로 필터 통과 grant 수 3배 이상 증가, AMR+AI tier1은 상위 유지
+    result: passes_keyword_gate() tier1/tier2/skip 반환. tier2(AMR-only) score×0.5 페널티.
+      107 tests pass.
   e031:
-    title: "EU pre-filter objective 필드 추가"
+    title: EU pre-filter objective 필드 추가
     status: validated
     issue: 31
-    created: "2026-03-18"
-    depends_on: [e018]
-    milestone: "v2.3 - 데이터 품질 정밀화 II"
-    hypothesis: "EU pre-filter에 objective 필드 포함으로 EU grant recall 회복"
-    result: "title+callTitle→title+callTitle+objective 확장. EU AMR grant가 objective에만 키워드 있는 경우도 수집."
+    created: '2026-03-18'
+    depends_on:
+    - e018
+    milestone: v2.3 - 데이터 품질 정밀화 II
+    hypothesis: EU pre-filter에 objective 필드 포함으로 EU grant recall 회복
+    result: title+callTitle→title+callTitle+objective 확장. EU AMR grant가 objective에만
+      키워드 있는 경우도 수집.
   e032:
-    title: "TF 이중정규화 수정 + description 절단 확대"
+    title: TF 이중정규화 수정 + description 절단 확대
     status: validated
     issue: 32
-    created: "2026-03-18"
-    depends_on: [e022]
-    milestone: "v2.3 - 데이터 품질 정밀화 II"
-    hypothesis: "log1p(count)/log1p(n) 정규화로 15.8x 길이 편향 제거, 5000자 절단으로 키워드 유실 방지"
-    result: "(count/n)/log1p(n)→log1p(count)/log1p(n) 전환. description 절단 2000→5000자 (NIH/EU/Grants.gov). 107 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e022
+    milestone: v2.3 - 데이터 품질 정밀화 II
+    hypothesis: log1p(count)/log1p(n) 정규화로 15.8x 길이 편향 제거, 5000자 절단으로 키워드 유실 방지
+    result: (count/n)/log1p(n)→log1p(count)/log1p(n) 전환. description 절단 2000→5000자
+      (NIH/EU/Grants.gov). 107 tests pass.
   e033:
-    title: "NIH foreign-eligible mechanism set 확장"
+    title: NIH foreign-eligible mechanism set 확장
     status: validated
     issue: 33
-    created: "2026-03-18"
-    depends_on: [e026]
-    milestone: "v2.3 - 데이터 품질 정밀화 II"
-    hypothesis: "7→15 mechanism code로 PAR/RFA/P01 등 foreign-eligible 인식률 향상"
-    result: "r33,r61,r37,ub1,u19,p01,p50,rm1,par,rfa 추가. 7→15 codes. 107 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e026
+    milestone: v2.3 - 데이터 품질 정밀화 II
+    hypothesis: 7→15 mechanism code로 PAR/RFA/P01 등 foreign-eligible 인식률 향상
+    result: r33,r61,r37,ub1,u19,p01,p50,rm1,par,rfa 추가. 7→15 codes. 107 tests pass.
   e034:
-    title: "키워드 매칭 복수형 지원 + antimicrobial 단독어 추가"
+    title: 키워드 매칭 복수형 지원 + antimicrobial 단독어 추가
     status: validated
     issue: 34
-    created: "2026-03-18"
-    depends_on: [e025]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "복수형 매칭(s? 접미사) + antimicrobial 단독어로 AI 키워드 매칭률 64%→95%, AMR recall 향상"
-    result: "filters.py _count_hits + scoring.py _tf에 s? 접미사. antimicrobial 단독 키워드 추가. 111 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e025
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: 복수형 매칭(s? 접미사) + antimicrobial 단독어로 AI 키워드 매칭률 64%→95%, AMR recall
+      향상
+    result: filters.py _count_hits + scoring.py _tf에 s? 접미사. antimicrobial 단독 키워드
+      추가. 111 tests pass.
   e035:
-    title: "MCP 서버 eligibility_map 빈 dict 버그 + jobs 메모리 누수 수정"
+    title: MCP 서버 eligibility_map 빈 dict 버그 + jobs 메모리 누수 수정
     status: validated
     issue: 35
-    created: "2026-03-18"
-    depends_on: [e006]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "server.py의 eligibility/score map 계산 복원 + jobs TTL로 MCP 대시보드 정상 동작"
-    result: "eligibility_map/score_map 계산 복원. _prune_old_jobs() 1시간 TTL. generate_html_report에도 eligibility 전달. 112 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e006
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: server.py의 eligibility/score map 계산 복원 + jobs TTL로 MCP 대시보드 정상 동작
+    result: eligibility_map/score_map 계산 복원. _prune_old_jobs() 1시간 TTL. generate_html_report에도
+      eligibility 전달. 112 tests pass.
   e036:
-    title: "EU 예산 필드 수정 + collector timeout 통일"
+    title: EU 예산 필드 수정 + collector timeout 통일
     status: validated
     issue: 36
-    created: "2026-03-18"
-    depends_on: [e018]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "EU totalCost→budgetTopicAction 수정으로 EU grant amount 100% None→실제 값 반환. timeout config 통일."
-    result: "EU budget multi-path fallback (budgetOverallBudget/budget/totalCost/budgetMax). REQUEST_TIMEOUT 통일. 111 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e018
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: EU totalCost→budgetTopicAction 수정으로 EU grant amount 100% None→실제 값
+      반환. timeout config 통일.
+    result: EU budget multi-path fallback (budgetOverallBudget/budget/totalCost/budgetMax).
+      REQUEST_TIMEOUT 통일. 111 tests pass.
   e037:
-    title: "drug_discovery 키워드 dead code 활성화"
+    title: drug_discovery 키워드 dead code 활성화
     status: validated
     issue: 37
-    created: "2026-03-18"
-    depends_on: [e025]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "drug_discovery 키워드를 filter gate에 통합하여 신약개발 grant recall 향상"
-    result: "tier2 + drug_discovery hit → 0.7x 페널티(기존 0.5x). DRUG_KEYWORDS 55개 활성화. 111 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e025
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: drug_discovery 키워드를 filter gate에 통합하여 신약개발 grant recall 향상
+    result: tier2 + drug_discovery hit → 0.7x 페널티(기존 0.5x). DRUG_KEYWORDS 55개 활성화.
+      111 tests pass.
   e038:
-    title: "적격성 패턴 복수형 + tier2 노이즈 강화"
+    title: 적격성 패턴 복수형 + tier2 노이즈 강화
     status: validated
     issue: 38
-    created: "2026-03-18"
-    depends_on: [e026, e034]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "UNIVERSITY_ONLY 복수형 추가 + tier2 조건 amr_core>=1로 노이즈 50%→20% 감소"
-    result: "UNIVERSITY_ONLY 5개 복수형 추가. tier2 조건 amr_core_hits>=1로 강화. 112 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e026
+    - e034
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: UNIVERSITY_ONLY 복수형 추가 + tier2 조건 amr_core>=1로 노이즈 50%→20% 감소
+    result: UNIVERSITY_ONLY 5개 복수형 추가. tier2 조건 amr_core_hits>=1로 강화. 112 tests pass.
   e039:
-    title: "프로덕션 안정화 (wall-clock timeout + CLI 엔트리포인트)"
+    title: 프로덕션 안정화 (wall-clock timeout + CLI 엔트리포인트)
     status: validated
     issue: 39
-    created: "2026-03-18"
-    depends_on: [e027]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "collector wall-clock timeout + grant-hunter-run 엔트리포인트로 cron 무한대기 방지 + 사용성 개선"
-    result: "ThreadPoolExecutor 300s wall-clock timeout. grant-hunter-run CLI 엔트리포인트. 112 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e027
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: collector wall-clock timeout + grant-hunter-run 엔트리포인트로 cron 무한대기
+      방지 + 사용성 개선
+    result: ThreadPoolExecutor 300s wall-clock timeout. grant-hunter-run CLI 엔트리포인트.
+      112 tests pass.
   e040:
-    title: "이메일 리포트 적격성 컬럼 + 프로필 MCP 연결"
+    title: 이메일 리포트 적격성 컬럼 + 프로필 MCP 연결
     status: validated
     issue: 40
-    created: "2026-03-18"
-    depends_on: [e035, e015]
-    milestone: "v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화"
-    hypothesis: "이메일에 적격성 표시 + MCP grant_search에 profile 파라미터로 개인 맞춤 검색 지원"
-    result: "이메일 리포트 적격성 컬럼(green/orange/red). grant_search profile 파라미터. grant_list_profiles 도구. KeyError 가드. 112 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e035
+    - e015
+    milestone: v2.4 - 파이프라인 버그 수정 + 프로덕션 안정화
+    hypothesis: 이메일에 적격성 표시 + MCP grant_search에 profile 파라미터로 개인 맞춤 검색 지원
+    result: 이메일 리포트 적격성 컬럼(green/orange/red). grant_search profile 파라미터. grant_list_profiles
+      도구. KeyError 가드. 112 tests pass.
   e041:
-    title: "MCP 서버 + 리포트 테스트 커버리지"
+    title: MCP 서버 + 리포트 테스트 커버리지
     status: validated
     issue: 28
-    created: "2026-03-18"
-    depends_on: [e035, e040]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "server.py, dashboard.py, report_generator.py 테스트 추가로 MCP 인터페이스 커버리지 0%→80% 달성"
-    result: "test_server.py 38개, test_dashboard.py 30개, test_report_generator.py 32개 = 100개 새 테스트. server dispatch, tool logic, dashboard HTML, report HTML 전체 커버. 242 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e035
+    - e040
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: server.py, dashboard.py, report_generator.py 테스트 추가로 MCP 인터페이스 커버리지
+      0%→80% 달성
+    result: test_server.py 38개, test_dashboard.py 30개, test_report_generator.py 32개
+      = 100개 새 테스트. server dispatch, tool logic, dashboard HTML, report HTML 전체 커버.
+      242 tests pass.
   e042:
-    title: "파이프라인 실행 이력 + 볼륨 이상 감지"
+    title: 파이프라인 실행 이력 + 볼륨 이상 감지
     status: validated
     issue: 29
-    created: "2026-03-18"
-    depends_on: [e027, e039]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "실행 이력 persist + 볼륨 anomaly detection으로 silent API 장애 24시간 이내 탐지율 100%"
-    result: "monitoring.py 신규. run_history.json atomic write(90건 cap). 3규칙 anomaly detection(zero-collect, 50% drop, source fail). send-email 알림. 30개 테스트. 242 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e027
+    - e039
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: 실행 이력 persist + 볼륨 anomaly detection으로 silent API 장애 24시간 이내 탐지율 100%
+    result: monitoring.py 신규. run_history.json atomic write(90건 cap). 3규칙 anomaly
+      detection(zero-collect, 50% drop, source fail). send-email 알림. 30개 테스트. 242
+      tests pass.
   e043:
-    title: "스코어링 검증 데이터셋 (ground truth 라벨링)"
+    title: 스코어링 검증 데이터셋 (ground truth 라벨링)
     status: validated
     issue: 30
-    created: "2026-03-18"
-    depends_on: [e014, e022]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "50건 ground truth 라벨로 현재 스코어링 precision@20 >= 0.7 검증"
-    result: "30건 validation_set.json(8high/8med/7low/7irr). validation.py evaluate_scoring(). precision@10>=0.7 달성. rank order correct(high>med>low>irr). 9개 테스트. 242 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e014
+    - e022
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: 50건 ground truth 라벨로 현재 스코어링 precision@20 >= 0.7 검증
+    result: 30건 validation_set.json(8high/8med/7low/7irr). validation.py evaluate_scoring().
+      precision@10>=0.7 달성. rank order correct(high>med>low>irr). 9개 테스트. 242 tests
+      pass.
   e047:
-    title: "NIH collector 병렬화 + timeout config 외부화"
+    title: NIH collector 병렬화 + timeout config 외부화
     status: validated
-    created: "2026-03-18"
-    depends_on: [e029, e039]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "검색어 병렬화(max_workers=4)로 NIH 수집 시간 1260s→315s 감소, config.py timeout 외부화로 운영 조정 가능"
-    critique: "1800s 증가는 band-aid. 근본 해결은 term-level parallelism. 4 workers면 현 600s timeout 내 완료. seen_ids에 threading lock 필요."
+    created: '2026-03-18'
+    depends_on:
+    - e029
+    - e039
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: 검색어 병렬화(max_workers=4)로 NIH 수집 시간 1260s→315s 감소, config.py timeout
+      외부화로 운영 조정 가능
+    critique: 1800s 증가는 band-aid. 근본 해결은 term-level parallelism. 4 workers면 현 600s
+      timeout 내 완료. seen_ids에 threading lock 필요.
   e048:
-    title: "이메일 전송 ARG_MAX 수정 (--file 플래그)"
+    title: 이메일 전송 ARG_MAX 수정 (--file 플래그)
     status: validated
-    created: "2026-03-18"
-    depends_on: [e040, e027]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "send-email에 --file 플래그 추가 + pipeline.py에서 경로 전달로 이메일 전송 성공률 0%→100%"
-    critique: "HTML 5.5MB가 argv로 전달 — ARG_MAX 2MB 초과 224-281%. --file 옵션이 최소 변경(2파일 15줄). stdin 방식보다 안전."
+    created: '2026-03-18'
+    depends_on:
+    - e040
+    - e027
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: send-email에 --file 플래그 추가 + pipeline.py에서 경로 전달로 이메일 전송 성공률 0%→100%
+    critique: HTML 5.5MB가 argv로 전달 — ARG_MAX 2MB 초과 224-281%. --file 옵션이 최소 변경(2파일
+      15줄). stdin 방식보다 안전.
   e049:
-    title: "run_history.json 테스트 데이터 정리"
+    title: run_history.json 테스트 데이터 정리
     status: validated
-    created: "2026-03-18"
-    depends_on: [e042]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "오염된 run_history 초기화로 anomaly detection baseline 정상화"
-    critique: "8개 항목 전부 collected=0. false negative 위험 3-4일간 존재하나 일회성. 파일 삭제로 충분."
+    created: '2026-03-18'
+    depends_on:
+    - e042
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: 오염된 run_history 초기화로 anomaly detection baseline 정상화
+    critique: 8개 항목 전부 collected=0. false negative 위험 3-4일간 존재하나 일회성. 파일 삭제로 충분.
   e050:
-    title: "Pipeline integration test 3개 추가"
+    title: Pipeline integration test 3개 추가
     status: validated
-    created: "2026-03-18"
-    depends_on: [e010, e042]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "mock 기반 integration test 3개로 collect→filter→score 체인, partial failure, first-run skip 검증"
-    critique: "현 smoke test 1개는 '예외 없이 실행'만 보장. 비즈니스 로직 오류 미감지. mock API 적절."
+    created: '2026-03-18'
+    depends_on:
+    - e010
+    - e042
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: mock 기반 integration test 3개로 collect→filter→score 체인, partial failure,
+      first-run skip 검증
+    critique: 현 smoke test 1개는 '예외 없이 실행'만 보장. 비즈니스 로직 오류 미감지. mock API 적절.
   e051:
-    title: "Orphan 스냅샷 정리 + staleness 필터링"
+    title: Orphan 스냅샷 정리 + staleness 필터링
     status: validated
-    created: "2026-03-18"
-    depends_on: [e028, e042]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "orphan 4개 삭제 + check_staleness() active collector 필터로 stale 목록 오염 방지"
-    critique: "삭제만으로 불충분. check_staleness()가 *.json glob — 20h 후 orphan이 stale 보고에 등장. 1줄 필터링 수정 필요."
+    created: '2026-03-18'
+    depends_on:
+    - e028
+    - e042
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: orphan 4개 삭제 + check_staleness() active collector 필터로 stale 목록 오염
+      방지
+    critique: 삭제만으로 불충분. check_staleness()가 *.json glob — 20h 후 orphan이 stale 보고에
+      등장. 1줄 필터링 수정 필요.
   e044:
-    title: "BARDA 키워드 확장 (SAM.gov collector NO-GO)"
+    title: BARDA 키워드 확장 (SAM.gov collector NO-GO)
     status: validated
     issue: 31
-    created: "2026-03-18"
-    depends_on: [e017, e025]
-    milestone: "v2.6 - 소스 확대"
-    hypothesis: "BARDA/biodefense 키워드 7개 추가로 Grants.gov에서 BARDA 관련 공고 recall 향상"
-    result: "SAM.gov은 Grants.gov와 동일 연방 공고 중복으로 NO-GO. BARDA 키워드 7개(BARDA, biodefense, medical countermeasure, pandemic preparedness, CBRN, PHEMCE, broad-spectrum antimicrobial) 추가. AMR 키워드 86→93개. 249 tests pass."
+    created: '2026-03-18'
+    depends_on:
+    - e017
+    - e025
+    milestone: v2.6 - 소스 확대
+    hypothesis: BARDA/biodefense 키워드 7개 추가로 Grants.gov에서 BARDA 관련 공고 recall 향상
+    result: SAM.gov은 Grants.gov와 동일 연방 공고 중복으로 NO-GO. BARDA 키워드 7개(BARDA, biodefense,
+      medical countermeasure, pandemic preparedness, CBRN, PHEMCE, broad-spectrum
+      antimicrobial) 추가. AMR 키워드 86→93개. 249 tests pass.
   e045:
-    title: "Wellcome Trust 경량 모니터 (NO-GO)"
+    title: Wellcome Trust 경량 모니터 (NO-GO)
     status: concluded
     issue: 32
-    created: "2026-03-18"
-    depends_on: [e041]
-    milestone: "v2.6 - 소스 확대"
-    hypothesis: "Wellcome Trust 경량 모니터로 연간 2-8건 고가치 AMR open call 포착"
-    result: "NO-GO. 4축 부정적: (1) AMR 단독 open call 2018년 이후 0건, 파트너십 모델로 전환, (2) 한국 PI 지원 불가(고소득국 제외), (3) JS 사이트 크롤링 필요(Playwright급), (4) ROI 음수. 대안: AMR.Solutions 피드 또는 Wellcome 뉴스레터 구독."
+    created: '2026-03-18'
+    depends_on:
+    - e041
+    milestone: v2.6 - 소스 확대
+    hypothesis: Wellcome Trust 경량 모니터로 연간 2-8건 고가치 AMR open call 포착
+    result: 'NO-GO. 4축 부정적: (1) AMR 단독 open call 2018년 이후 0건, 파트너십 모델로 전환, (2) 한국
+      PI 지원 불가(고소득국 제외), (3) JS 사이트 크롤링 필요(Playwright급), (4) ROI 음수. 대안: AMR.Solutions
+      피드 또는 Wellcome 뉴스레터 구독.'
   e046:
-    title: "CARB-X/JPIAMR 타당성 조사 (go/no-go)"
+    title: CARB-X/JPIAMR 타당성 조사 (go/no-go)
     status: concluded
     issue: 33
-    created: "2026-03-18"
-    depends_on: [e028]
-    milestone: "v2.6 - 소스 확대"
-    hypothesis: "2h time-boxed 조사로 CARB-X/JPIAMR collector 구현 가치 판단"
-    result: "CARB-X NO-GO (1-2건/년, 이전 e003→e028 삭제 이력). JPIAMR NO-GO (한국 비회원국, 대부분 지원 불가)."
+    created: '2026-03-18'
+    depends_on:
+    - e028
+    milestone: v2.6 - 소스 확대
+    hypothesis: 2h time-boxed 조사로 CARB-X/JPIAMR collector 구현 가치 판단
+    result: CARB-X NO-GO (1-2건/년, 이전 e003→e028 삭제 이력). JPIAMR NO-GO (한국 비회원국, 대부분
+      지원 불가).
   e052:
-    title: "Cron 이메일 PATH 수정 + pipeline stderr 로깅"
+    title: Cron 이메일 PATH 수정 + pipeline stderr 로깅
     status: validated
     issue: 34
-    created: "2026-03-19"
-    depends_on: [e048, e027]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "run_pipeline.sh PATH 수정 + stderr/stdout 통합 로깅으로 cron 이메일 전송 성공률 0%→100%"
-    critique: "3일간 이메일 0% 전송. cron 환경에서 $HOME/bin 미포함. send-email 에러가 stdout으로 출력되나 pipeline은 stderr만 로깅."
+    created: '2026-03-19'
+    depends_on:
+    - e048
+    - e027
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: run_pipeline.sh PATH 수정 + stderr/stdout 통합 로깅으로 cron 이메일 전송 성공률 0%→100%
+    critique: 3일간 이메일 0% 전송. cron 환경에서 $HOME/bin 미포함. send-email 에러가 stdout으로 출력되나
+      pipeline은 stderr만 로깅.
   e053:
-    title: "모니터링 테스트 격리 (tmp_path) + run_history 재리셋"
+    title: 모니터링 테스트 격리 (tmp_path) + run_history 재리셋
     status: validated
     issue: 35
-    created: "2026-03-19"
-    depends_on: [e049, e042]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "tmp_path fixture 적용으로 테스트-프로덕션 격리 100%, 이상탐지 기준선 7일 이내 정상화"
-    critique: "e049 리셋 후에도 92% 테스트 오염 재발. 근본 원인(tmp_path 미사용) 미수정. 테스트 실행마다 재오염."
+    created: '2026-03-19'
+    depends_on:
+    - e049
+    - e042
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: tmp_path fixture 적용으로 테스트-프로덕션 격리 100%, 이상탐지 기준선 7일 이내 정상화
+    critique: e049 리셋 후에도 92% 테스트 오염 재발. 근본 원인(tmp_path 미사용) 미수정. 테스트 실행마다 재오염.
   e054:
-    title: "플러그인 스킬 문서 정정 + deadlines eligibility 추가"
+    title: 플러그인 스킬 문서 정정 + deadlines eligibility 추가
     status: validated
     issue: 36
-    created: "2026-03-19"
-    depends_on: [e007, e035]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "스킬 문서 정정으로 신규 사용자 온보딩 성공률 0%→100%, deadlines에 eligibility 정보 제공"
-    critique: "setup 스킬이 존재하지 않는 PyPI 패키지 안내. collect 스킬이 8소스 언급(실제 3소스). deadlines에 eligibility 누락."
+    created: '2026-03-19'
+    depends_on:
+    - e007
+    - e035
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: 스킬 문서 정정으로 신규 사용자 온보딩 성공률 0%→100%, deadlines에 eligibility 정보 제공
+    critique: setup 스킬이 존재하지 않는 PyPI 패키지 안내. collect 스킬이 8소스 언급(실제 3소스). deadlines에
+      eligibility 누락.
   e055:
-    title: "Pipeline 프로필 연결 버그 수정"
+    title: Pipeline 프로필 연결 버그 수정
     status: validated
-    created: "2026-03-19"
-    depends_on: [e015, e004]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "pipeline.py에서 profile 인자를 filter_grants()에 전달하면, 프로필별 스코어링이 실제 적용된다"
-    result: "filter_grants(profile=) 시그니처 추가. pipeline.py 2곳 profile 전달. config.py GRANT_HUNTER_PROFILE 환경변수. report/email 프로필명 표시. 245 tests pass."
+    created: '2026-03-19'
+    depends_on:
+    - e015
+    - e004
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: pipeline.py에서 profile 인자를 filter_grants()에 전달하면, 프로필별 스코어링이 실제 적용된다
+    result: filter_grants(profile=) 시그니처 추가. pipeline.py 2곳 profile 전달. config.py
+      GRANT_HUNTER_PROFILE 환경변수. report/email 프로필명 표시. 245 tests pass.
   e056:
-    title: "FP Rate 측정 스캐폴딩 (스크립트 생성)"
+    title: FP Rate 측정 스캐폴딩 (스크립트 생성)
     status: validated
-    created: "2026-03-19"
-    depends_on: [e055, e025]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "필터 통과 grant에서 80건 층화 샘플링 + 라벨 스키마로 FP rate 측정 인프라 구축"
-    result: "extract_filtered_grants.py, sample_for_labeling.py, analyze_fp_labels.py 3개 스크립트 생성. 데이터 부족(6건/tier1=0)으로 80건 샘플링 불가 확인."
+    created: '2026-03-19'
+    depends_on:
+    - e055
+    - e025
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: 필터 통과 grant에서 80건 층화 샘플링 + 라벨 스키마로 FP rate 측정 인프라 구축
+    result: extract_filtered_grants.py, sample_for_labeling.py, analyze_fp_labels.py
+      3개 스크립트 생성. 데이터 부족(6건/tier1=0)으로 80건 샘플링 불가 확인.
   e059:
-    title: "EU collector description 수집 개선 + 키워드 보강"
+    title: EU collector description 수집 개선 + 키워드 보강
     status: validated
-    created: "2026-03-20"
-    depends_on: [e031, e018]
-    milestone: "v2.5 - 품질 강화 + 모니터링"
-    hypothesis: "EU collector에서 full description 수집 + 역순 표현 키워드 추가로 필터 통과 grant 수 증가"
-    result: "SEDIA API로 EU description 28-48자→avg 4255자. 역순 키워드 8개 추가(총 86개). 필터 통과 6→8건, tier1 0→1건, EU 1→3건. 245 tests pass."
+    created: '2026-03-20'
+    depends_on:
+    - e031
+    - e018
+    milestone: v2.5 - 품질 강화 + 모니터링
+    hypothesis: EU collector에서 full description 수집 + 역순 표현 키워드 추가로 필터 통과 grant 수 증가
+    result: SEDIA API로 EU description 28-48자→avg 4255자. 역순 키워드 8개 추가(총 86개). 필터 통과
+      6→8건, tier1 0→1건, EU 1→3건. 245 tests pass.
+  run_20260317_144437_1f747a:
+    description: 'TODO: one-line what this experiment did'
+    contribution_level: 'TODO  # core | supporting'
+    key_judgment: 'TODO: GO/PASS/NO-GO — metric=value'
+    key_metrics: {}
+    figures:
+    - outputs/run_20260317_144437_1f747a/final_output.png
+    - outputs/run_20260317_144437_1f747a/plot_iter_1.png
+    outputs:
+    - path: outputs/run_20260317_144437_1f747a/final_output.png
+      type: figure
+    - path: outputs/run_20260317_144437_1f747a/iter_1/details.json
+      type: data
+    - path: outputs/run_20260317_144437_1f747a/metadata.json
+      type: data
+    - path: outputs/run_20260317_144437_1f747a/planning.json
+      type: data
+    - path: outputs/run_20260317_144437_1f747a/plot_iter_1.png
+      type: figure
+  run_20260317_144510_1e5860:
+    description: 'TODO: one-line what this experiment did'
+    contribution_level: 'TODO  # core | supporting'
+    key_judgment: 'TODO: GO/PASS/NO-GO — metric=value'
+    key_metrics: {}
+    figures:
+    - outputs/run_20260317_144510_1e5860/final_output.png
+    - outputs/run_20260317_144510_1e5860/plot_iter_1.png
+    - outputs/run_20260317_144510_1e5860/plot_iter_2.png
+    - outputs/run_20260317_144510_1e5860/plot_iter_3.png
+    outputs:
+    - path: outputs/run_20260317_144510_1e5860/final_output.png
+      type: figure
+    - path: outputs/run_20260317_144510_1e5860/iter_1/details.json
+      type: data
+    - path: outputs/run_20260317_144510_1e5860/iter_2/details.json
+      type: data
+    - path: outputs/run_20260317_144510_1e5860/iter_3/details.json
+      type: data
+    - path: outputs/run_20260317_144510_1e5860/metadata.json
+      type: data
+    - path: outputs/run_20260317_144510_1e5860/planning.json
+      type: data
+    - path: outputs/run_20260317_144510_1e5860/plot_iter_1.png
+      type: figure
+    - path: outputs/run_20260317_144510_1e5860/plot_iter_2.png
+      type: figure
+    - path: outputs/run_20260317_144510_1e5860/plot_iter_3.png
+      type: figure
+  run_20260317_180028_52f92b:
+    description: 'TODO: one-line what this experiment did'
+    contribution_level: 'TODO  # core | supporting'
+    key_judgment: 'TODO: GO/PASS/NO-GO — metric=value'
+    key_metrics: {}
+    figures:
+    - outputs/run_20260317_180028_52f92b/final_output.png
+    - outputs/run_20260317_180028_52f92b/plot_iter_1.png
+    - outputs/run_20260317_180028_52f92b/plot_iter_2.png
+    outputs:
+    - path: outputs/run_20260317_180028_52f92b/final_output.png
+      type: figure
+    - path: outputs/run_20260317_180028_52f92b/iter_1/details.json
+      type: data
+    - path: outputs/run_20260317_180028_52f92b/iter_2/details.json
+      type: data
+    - path: outputs/run_20260317_180028_52f92b/metadata.json
+      type: data
+    - path: outputs/run_20260317_180028_52f92b/planning.json
+      type: data
+    - path: outputs/run_20260317_180028_52f92b/plot_iter_1.png
+      type: figure
+    - path: outputs/run_20260317_180028_52f92b/plot_iter_2.png
+      type: figure
+  run_20260317_180125_b04160:
+    description: 'TODO: one-line what this experiment did'
+    contribution_level: 'TODO  # core | supporting'
+    key_judgment: 'TODO: GO/PASS/NO-GO — metric=value'
+    key_metrics: {}
+    figures:
+    - outputs/run_20260317_180125_b04160/final_output.png
+    - outputs/run_20260317_180125_b04160/plot_iter_1.png
+    outputs:
+    - path: outputs/run_20260317_180125_b04160/final_output.png
+      type: figure
+    - path: outputs/run_20260317_180125_b04160/iter_1/details.json
+      type: data
+    - path: outputs/run_20260317_180125_b04160/metadata.json
+      type: data
+    - path: outputs/run_20260317_180125_b04160/planning.json
+      type: data
+    - path: outputs/run_20260317_180125_b04160/plot_iter_1.png
+      type: figure
+  run_20260317_180227_afd1d0:
+    description: 'TODO: one-line what this experiment did'
+    contribution_level: 'TODO  # core | supporting'
+    key_judgment: 'TODO: GO/PASS/NO-GO — metric=value'
+    key_metrics: {}
+    figures:
+    - outputs/run_20260317_180227_afd1d0/final_output.png
+    - outputs/run_20260317_180227_afd1d0/plot_iter_1.png
+    - outputs/run_20260317_180227_afd1d0/plot_iter_2.png
+    outputs:
+    - path: outputs/run_20260317_180227_afd1d0/final_output.png
+      type: figure
+    - path: outputs/run_20260317_180227_afd1d0/iter_1/details.json
+      type: data
+    - path: outputs/run_20260317_180227_afd1d0/iter_2/details.json
+      type: data
+    - path: outputs/run_20260317_180227_afd1d0/metadata.json
+      type: data
+    - path: outputs/run_20260317_180227_afd1d0/planning.json
+      type: data
+    - path: outputs/run_20260317_180227_afd1d0/plot_iter_1.png
+      type: figure
+    - path: outputs/run_20260317_180227_afd1d0/plot_iter_2.png
+      type: figure
+  run_20260319_210402_682668:
+    description: 'TODO: one-line what this experiment did'
+    contribution_level: 'TODO  # core | supporting'
+    key_judgment: 'TODO: GO/PASS/NO-GO — metric=value'
+    key_metrics: {}
+    figures:
+    - outputs/run_20260319_210402_682668/final_output.png
+    - outputs/run_20260319_210402_682668/plot_iter_1.png
+    - outputs/run_20260319_210402_682668/plot_iter_2.png
+    outputs:
+    - path: outputs/run_20260319_210402_682668/final_output.png
+      type: figure
+    - path: outputs/run_20260319_210402_682668/iter_1/details.json
+      type: data
+    - path: outputs/run_20260319_210402_682668/iter_2/details.json
+      type: data
+    - path: outputs/run_20260319_210402_682668/metadata.json
+      type: data
+    - path: outputs/run_20260319_210402_682668/planning.json
+      type: data
+    - path: outputs/run_20260319_210402_682668/plot_iter_1.png
+      type: figure
+    - path: outputs/run_20260319_210402_682668/plot_iter_2.png
+      type: figure
